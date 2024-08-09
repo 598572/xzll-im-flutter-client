@@ -10,18 +10,22 @@ import 'package:permission_handler/permission_handler.dart';
 /*
 xzll-im的客户端，使用flutter编写，目前都搞到一个类 后期 在拆分
  */
-void main() => runApp(XzllImClient());
+void main() => runApp(const XzllImClient());
 
 class XzllImClient extends StatelessWidget {
+  const XzllImClient({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: WebSocketConnect(),
     );
   }
 }
 
 class WebSocketConnect extends StatefulWidget {
+  const WebSocketConnect({super.key});
+
   @override
   _WebSocketConnectState createState() => _WebSocketConnectState();
 }
@@ -60,7 +64,6 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
     final headers = {
       'Connection': 'Upgrade',
       'Upgrade': 'websocket',
-      // 'Sec-WebSocket-Extensions': 'permessage-deflate',
       'token': 't_value',
       'uid': '111',
     };
