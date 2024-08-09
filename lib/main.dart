@@ -34,7 +34,7 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
   WebSocketChannel? channel;
   String ip = '172.30.129.244'; // WebSocket服务器的IP地址
   int port = 10001; // WebSocket服务器的端口号
-  TextEditingController _controller = TextEditingController(); // 控制输入框的文本
+  final TextEditingController _controller = TextEditingController(); // 控制输入框的文本
   List<Map<String, dynamic>> messages = []; // 保存所有消息的列表，包括文本和图片
   final ImagePicker _picker = ImagePicker(); // 图片选择器实例
   final String myAvatar = 'assets/my_avatar.png'; // 本地用户头像
