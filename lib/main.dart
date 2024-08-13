@@ -32,7 +32,8 @@ class WebSocketConnect extends StatefulWidget {
 
 class _WebSocketConnectState extends State<WebSocketConnect> {
   WebSocketChannel? channel;
-  String ip = '172.30.129.244'; // WebSocket服务器的IP地址
+
+  String ip = '192.168.1.101'; // WebSocket服务器的IP地址
   int port = 10001; // WebSocket服务器的端口号
   final TextEditingController _controller = TextEditingController(); // 控制输入框的文本
   List<Map<String, dynamic>> messages = []; // 保存所有消息的列表，包括文本和图片
@@ -73,27 +74,79 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
       headers: headers, // 传递自定义的请求头
     );
     channel!.stream.listen((message) {
-      setState(() {
-        messages.add({
-          'message': message,
-          'sender': 'other',
-          'isImage': false,
-          'isVoice': false
-        }); // 收到消息后更新UI
-      });
+      var response = jsonDecode(message);
+      // 处理获取msgId的响应
+      if (response['msgType']['firstLevelMsgType'] == 5 &&
+          response['msgType']['secondLevelMsgType'] == -11) {
+        List<String> msgIds = List<String>.from(response['msgIds']);
+        msgIdCache.addAll(msgIds);
+        getMsgFlag = false;
+      } else {
+        // 处理其他消息，如聊天信息
+        setState(() {
+          messages.add({
+            'message': response,
+            'sender': 'other',
+            'isImage': false,
+            'isVoice': false
+          });
+        });
+      }
+    });
+  }
+
+
+  List<String> msgIdCache = [];
+  bool getMsgFlag = false;
+
+  // 获取 msgId 的方法
+  Future<String> getMsgId() async {
+    if (msgIdCache.isEmpty) {
+      await fetchMsgIdsFromServer();
+    }
+    return msgIdCache.removeAt(0); // 从缓存中取出一个msgId
+  }
+
+  // 从服务器获取 msgId 并存储到缓存中
+  Future<void> fetchMsgIdsFromServer() async {
+    getMsgFlag = true;
+    var getMsgIdsRequest = {
+      'msgType': {
+        'firstLevelMsgType': 5, // 假设 1 是 GET_DATA_MSG
+        'secondLevelMsgType': -11, // 假设 101 是 GET_MSG_IDS
+      },
+      'body': {
+        'fromUserId': '111', // Replace with the actual user ID
+      },
+    };
+
+    String jsonRequest = jsonEncode(getMsgIdsRequest);
+    channel?.sink.add(jsonRequest); // 发送获取 msgId 的请求
+
+    // 这里需要监听服务器返回的 msgId 列表，并将其存储到缓存中
+    // 监听服务器的响应
+    channel?.stream.listen((message) {
+      var response = jsonDecode(message);
+      if (response['msgType']['firstLevelMsgType'] == 5 &&
+          response['msgType']['secondLevelMsgType'] == -11) {
+        List<String> msgIds = List<String>.from(response['msgIds']);
+        msgIdCache.addAll(msgIds);
+        getMsgFlag = false;
+      }
     });
   }
 
   // 发送文本消息
-  void sendMessage(String message) {
+  void sendMessage(String message) async {
     if (channel != null && message.isNotEmpty) {
+      String msgId = await getMsgId();
       var imBaseRequest = {
         'msgType': {
           'firstLevelMsgType': 3,
           'secondLevelMsgType': 301,
         },
         'body': {
-          'msgId': '111111',
+          'msgId': msgId,
           'msgContent': message,
           'chatId': '999',
           'toUserId': '222', // Replace with the actual user ID
@@ -116,7 +169,7 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
 
       // 使用 WebSocket 发送消息
       channel?.sink.add(jsonMessage);  // 这相当于在 Java 中发送 TextWebSocketFrame
-      print("Message sent: $jsonMessage");
+      print("发送的消息内容为: $jsonMessage");
 
       _controller.clear(); // 发送后清空输入框
     }
@@ -255,7 +308,7 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
             ],
           )
               : Text(
-            message['message'],
+            jsonEncode(message['message']),
             style: TextStyle(
                 color: isMe ? Colors.white : Colors.black),
           ),
