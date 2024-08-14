@@ -33,7 +33,7 @@ class WebSocketConnect extends StatefulWidget {
 class _WebSocketConnectState extends State<WebSocketConnect> {
   WebSocketChannel? channel;
 
-  String ip = '192.168.1.101'; // WebSocket服务器的IP地址
+  String ip = '172.30.129.244'; // WebSocket服务器的IP地址
   int port = 10001; // WebSocket服务器的端口号
   final TextEditingController _controller = TextEditingController(); // 控制输入框的文本
   List<Map<String, dynamic>> messages = []; // 保存所有消息的列表，包括文本和图片
@@ -73,26 +73,43 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
       'ws://$ip:$port/websocket',
       headers: headers, // 传递自定义的请求头
     );
-    channel!.stream.listen((message) {
-      var response = jsonDecode(message);
-      // 处理获取msgId的响应
-      if (response['msgType']['firstLevelMsgType'] == 5 &&
-          response['msgType']['secondLevelMsgType'] == -11) {
-        List<String> msgIds = List<String>.from(response['msgIds']);
-        msgIdCache.addAll(msgIds);
-        getMsgFlag = false;
-      } else {
-        // 处理其他消息，如聊天信息
-        setState(() {
-          messages.add({
-            'message': response,
-            'sender': 'other',
-            'isImage': false,
-            'isVoice': false
+
+    print("尝试连接到WebSocket服务器，IP: $ip, 端口: $port, 请求头: $headers");
+
+    try {
+      channel = IOWebSocketChannel.connect(
+        'ws://$ip:$port/websocket',
+        headers: headers, // 传递自定义的请求头
+      );
+
+      channel!.stream.listen((message) {
+        print("收到消息: $message");
+        var response = jsonDecode(message);
+        // 处理获取msgId的响应
+        if (response['url'] == 'xzll/im/c2c/get/batch/msgId') {
+          List<String> msgIds = List<String>.from(response['msgIds']);
+          msgIdCache.addAll(msgIds);
+          getMsgFlag = false;
+        } else {
+          // 处理其他消息，如聊天信息
+          setState(() {
+            messages.add({
+              'message': response,
+              'sender': 'other',
+              'isImage': false,
+              'isVoice': false
+            });
           });
-        });
-      }
-    });
+        }
+      }, onError: (error) {
+        print("WebSocket连接错误: $error");
+      }, onDone: () {
+        print("WebSocket连接关闭");
+      });
+
+    } catch (e) {
+      print("WebSocket连接失败: $e");
+    }
   }
 
 
@@ -111,10 +128,7 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
   Future<void> fetchMsgIdsFromServer() async {
     getMsgFlag = true;
     var getMsgIdsRequest = {
-      'msgType': {
-        'firstLevelMsgType': 5, // 假设 1 是 GET_DATA_MSG
-        'secondLevelMsgType': -11, // 假设 101 是 GET_MSG_IDS
-      },
+      'url': 'xzll/im/c2c/get/batch/msgId',
       'body': {
         'fromUserId': '111', // Replace with the actual user ID
       },
@@ -122,18 +136,6 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
 
     String jsonRequest = jsonEncode(getMsgIdsRequest);
     channel?.sink.add(jsonRequest); // 发送获取 msgId 的请求
-
-    // 这里需要监听服务器返回的 msgId 列表，并将其存储到缓存中
-    // 监听服务器的响应
-    channel?.stream.listen((message) {
-      var response = jsonDecode(message);
-      if (response['msgType']['firstLevelMsgType'] == 5 &&
-          response['msgType']['secondLevelMsgType'] == -11) {
-        List<String> msgIds = List<String>.from(response['msgIds']);
-        msgIdCache.addAll(msgIds);
-        getMsgFlag = false;
-      }
-    });
   }
 
   // 发送文本消息
@@ -141,14 +143,10 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
     if (channel != null && message.isNotEmpty) {
       String msgId = await getMsgId();
       var imBaseRequest = {
-        'msgType': {
-          'firstLevelMsgType': 3,
-          'secondLevelMsgType': 301,
-        },
+        'url': 'xzll/im/c2c/send',
         'body': {
           'msgId': msgId,
           'msgContent': message,
-          'chatId': '999',
           'toUserId': '222', // Replace with the actual user ID
           'fromUserId': '111', // Replace with the actual user ID
           'msgCreateTime': DateTime.now().millisecondsSinceEpoch,
