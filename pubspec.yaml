@@ -34,6 +34,8 @@ dependencies:
   image_picker: ^0.8.6+1
   flutter_sound: ^9.2.13  # 添加 flutter_sound 依赖
   permission_handler: ^10.2.0 # 添加权限处理
+  http: ^0.13.3
+
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -63,8 +65,8 @@ flutter:
   uses-material-design: true
   # 本地图片
   assets:
-    - assets/my_avatar.png
-    - assets/other_avatar.png
+    - assets/my_headImage.png
+    - assets/other_headImage.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

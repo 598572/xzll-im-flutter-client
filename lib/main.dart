@@ -1,15 +1,37 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import "package:web_socket_channel/io.dart";
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
 
-/*
-xzll-im的客户端，使用flutter编写，目前都搞到一个类 后期 在拆分
- */
+// 定义Conversation类
+class Conversation {
+  final String name;
+  final String headImage;
+  final String lastMessage;
+  final String timestamp;
+
+  Conversation({
+    required this.name,
+    required this.headImage,
+    required this.lastMessage,
+    required this.timestamp,
+  });
+
+  factory Conversation.fromJson(Map<String, dynamic> json) {
+    return Conversation(
+      name: json['name'],
+      headImage: json['headImage'],
+      lastMessage: json['lastMessage'],
+      timestamp: json['timestamp'],
+    );
+  }
+}
+
+// 应用程序入口
 void main() => runApp(const XzllImClient());
 
 class XzllImClient extends StatelessWidget {
@@ -17,29 +39,167 @@ class XzllImClient extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: WebSocketConnect(),
+    return MaterialApp(
+      title: '蝎聊',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+      ),
+      home: HomeScreen(),
     );
   }
 }
 
-class WebSocketConnect extends StatefulWidget {
-  const WebSocketConnect({super.key});
-
+// 主页屏幕，包含底部导航栏
+class HomeScreen extends StatefulWidget {
   @override
-  _WebSocketConnectState createState() => _WebSocketConnectState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _WebSocketConnectState extends State<WebSocketConnect> {
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+  static  List<Widget> _widgetOptions = <Widget>[
+    RecentConversationsScreen(),
+    Text('通讯录', style: TextStyle(fontSize: 24)),
+    Text('发现', style: TextStyle(fontSize: 24)),
+    Text('我', style: TextStyle(fontSize: 24)),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(''),
+      ),
+      body: _widgetOptions.elementAt(_selectedIndex),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.message),
+            label: '聊天',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contacts),
+            label: '通讯录',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.explore),
+            label: '发现',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: '我',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        // selectedItemColor: Colors.green[700],
+        selectedItemColor: Colors.purple, // 设置选中的颜色为紫色
+
+        // selectedItemColor: Colors.amber[800],
+        unselectedItemColor: Colors.grey,  // 确保未选中项的颜色不透明
+        type: BottomNavigationBarType.fixed, // 设置为固定类型，未选中时也显示标签
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+// 最近会话列表界面
+class RecentConversationsScreen extends StatelessWidget {
+  Future<List<Conversation>> fetchConversations() async {
+    // 模拟接口调用的延迟
+    await Future.delayed(Duration(seconds: 2));
+
+    // 假数据
+    List<Map<String, dynamic>> fakeData = [
+      {
+        'name': 'Alice',
+        'headImage': 'https://example.com/headImage/alice.png',
+        'lastMessage': 'Hello, how are you?',
+        'timestamp': '2024-08-15 10:00',
+      },
+      {
+        'name': 'Bob',
+        'headImage': 'https://example.com/headImage/bob.png',
+        'lastMessage': 'Are we still meeting today?',
+        'timestamp': '2024-08-15 09:45',
+      },
+      {
+        'name': 'Charlie',
+        'headImage': 'https://example.com/headImage/charlie.png',
+        'lastMessage': 'Please review the document I sent.',
+        'timestamp': '2024-08-15 09:30',
+      },
+    ];
+
+    return fakeData.map((item) => Conversation.fromJson(item)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<List<Conversation>>(
+        future: fetchConversations(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('加载会话失败'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('没有会话记录'));
+          } else {
+            List<Conversation> conversations = snapshot.data!;
+            return ListView.builder(
+              itemCount: conversations.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(conversations[index].headImage),
+                  ),
+                  title: Text(conversations[index].name),
+                  subtitle: Text(conversations[index].lastMessage),
+                  trailing: Text(conversations[index].timestamp),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(
+                          conversation: conversations[index],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          }
+        },
+      ),
+    );
+  }
+}
+
+// 聊天窗口
+class ChatScreen extends StatefulWidget {
+  final Conversation conversation;
+
+  ChatScreen({required this.conversation});
+
+  @override
+  _ChatScreenState createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
   WebSocketChannel? channel;
 
-  String ip = '172.30.129.244'; // WebSocket服务器的IP地址
-  int port = 10001; // WebSocket服务器的端口号
   final TextEditingController _controller = TextEditingController(); // 控制输入框的文本
   List<Map<String, dynamic>> messages = []; // 保存所有消息的列表，包括文本和图片
   final ImagePicker _picker = ImagePicker(); // 图片选择器实例
-  final String myAvatar = 'assets/my_avatar.png'; // 本地用户头像
-  final String otherAvatar = 'assets/other_avatar.png'; // 远程用户头像
   FlutterSoundRecorder? _recorder; // 声音录制器
   bool _isRecording = false; // 录制状态
 
@@ -51,7 +211,6 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
     openRecorder(); // 打开录音机
   }
 
-  // 打开录音机并请求权限
   Future<void> openRecorder() async {
     final status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
@@ -60,7 +219,6 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
     await _recorder!.openRecorder();
   }
 
-  // 连接到WebSocket服务器
   void connectToWebSocket() {
     final headers = {
       'Connection': 'Upgrade',
@@ -70,75 +228,36 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
     };
 
     channel = IOWebSocketChannel.connect(
-      'ws://$ip:$port/websocket',
+      'ws://192.168.1.101:10001/websocket',
       headers: headers, // 传递自定义的请求头
     );
 
-    print("尝试连接到WebSocket服务器，IP: $ip, 端口: $port, 请求头: $headers");
-
     try {
-      channel = IOWebSocketChannel.connect(
-        'ws://$ip:$port/websocket',
-        headers: headers, // 传递自定义的请求头
-      );
-
       channel!.stream.listen((message) {
-        print("收到消息: $message");
         var response = jsonDecode(message);
-        // 处理获取msgId的响应
-        if (response['url'] == 'xzll/im/c2c/get/batch/msgId') {
-          List<String> msgIds = List<String>.from(response['msgIds']);
-          msgIdCache.addAll(msgIds);
-          getMsgFlag = false;
-        } else {
-          // 处理其他消息，如聊天信息
-          setState(() {
-            messages.add({
-              'message': response,
-              'sender': 'other',
-              'isImage': false,
-              'isVoice': false
-            });
+        setState(() {
+          messages.add({
+            'message': response,
+            'sender': 'other',
+            'isImage': false,
+            'isVoice': false
           });
-        }
+        });
       }, onError: (error) {
         print("WebSocket连接错误: $error");
       }, onDone: () {
         print("WebSocket连接关闭");
       });
-
     } catch (e) {
       print("WebSocket连接失败: $e");
     }
   }
 
-
-  List<String> msgIdCache = [];
-  bool getMsgFlag = false;
-
-  // 获取 msgId 的方法
   Future<String> getMsgId() async {
-    if (msgIdCache.isEmpty) {
-      await fetchMsgIdsFromServer();
-    }
-    return msgIdCache.removeAt(0); // 从缓存中取出一个msgId
+    // 获取 msgId 的逻辑
+    return 'mock_msg_id';
   }
 
-  // 从服务器获取 msgId 并存储到缓存中
-  Future<void> fetchMsgIdsFromServer() async {
-    getMsgFlag = true;
-    var getMsgIdsRequest = {
-      'url': 'xzll/im/c2c/get/batch/msgId',
-      'body': {
-        'fromUserId': '111', // Replace with the actual user ID
-      },
-    };
-
-    String jsonRequest = jsonEncode(getMsgIdsRequest);
-    channel?.sink.add(jsonRequest); // 发送获取 msgId 的请求
-  }
-
-  // 发送文本消息
   void sendMessage(String message) async {
     if (channel != null && message.isNotEmpty) {
       String msgId = await getMsgId();
@@ -147,12 +266,11 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
         'body': {
           'msgId': msgId,
           'msgContent': message,
-          'toUserId': '222', // Replace with the actual user ID
-          'fromUserId': '111', // Replace with the actual user ID
+          'toUserId': '222',
+          'fromUserId': '111',
           'msgCreateTime': DateTime.now().millisecondsSinceEpoch,
         },
       };
-
 
       setState(() {
         messages.add({
@@ -160,124 +278,29 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
           'sender': 'me',
           'isImage': false,
           'isVoice': false
-        }); // 添加到消息列表
+        });
       });
-      // channel!.sink.add(jsonEncode({'message': imBaseRequest})); // 通过WebSocket发送消息
+
       String jsonMessage = jsonEncode(imBaseRequest);
-
-      // 使用 WebSocket 发送消息
-      channel?.sink.add(jsonMessage);  // 这相当于在 Java 中发送 TextWebSocketFrame
-      print("发送的消息内容为: $jsonMessage");
-
-      _controller.clear(); // 发送后清空输入框
+      channel?.sink.add(jsonMessage);
+      _controller.clear();
     }
   }
 
-  // 发送图片消息
-  Future<void> sendImage() async {
-    final pickedFile = await _picker.getImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      final encodedImage = base64Encode(bytes); // 将图片编码为Base64
-      setState(() {
-        messages.add({
-          'message': encodedImage,
-          'sender': 'me',
-          'isImage': true,
-          'isVoice': false
-        }); // 添加到消息列表，标识为图片
-      });
-      channel!.sink.add(jsonEncode({'image': encodedImage})); // 发送图片
-    }
-  }
-
-  // 录制并发送语音消息
-  Future<void> recordVoice() async {
-    if (_isRecording) {
-      // 停止录音并发送
-      final path = await _recorder!.stopRecorder();
-      setState(() {
-        _isRecording = false;
-      });
-      final bytes = await File(path!).readAsBytes();
-      final encodedVoice = base64Encode(bytes); // 将音频编码为Base64
-      setState(() {
-        messages.add({
-          'message': encodedVoice,
-          'sender': 'me',
-          'isImage': false,
-          'isVoice': true
-        }); // 添加到消息列表，标识为语音
-      });
-      channel!.sink.add(jsonEncode({'voice': encodedVoice})); // 发送语音
-    } else {
-      // 开始录音
-      await _recorder!.startRecorder(
-        codec: Codec.aacMP4,
-      );
-      setState(() {
-        _isRecording = true;
-      });
-    }
-  }
-
-  // 显示选择框，包含发送图片和语音选项
-  void _showMoreOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: 150,
-          child: Column(
-            children: [
-              ListTile(
-                leading: Icon(Icons.photo),
-                title: Text('发送图片'),
-                onTap: () {
-                  Navigator.pop(context);
-                  sendImage(); // 调用发送图片方法
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.mic),
-                title: Text(_isRecording ? '停止录音' : '录制语音'),
-                onTap: () {
-                  Navigator.pop(context);
-                  recordVoice(); // 调用录制语音方法
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    channel?.sink.close();
-    _controller.dispose();
-    _recorder?.closeRecorder();
-    super.dispose();
-  }
-
-  // 聊天气泡Widget
   Widget _buildMessage(Map<String, dynamic> message) {
     bool isMe = message['sender'] == 'me';
     return Row(
-      mainAxisAlignment: isMe
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start, // 根据发送者确定消息对齐方向
+      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
         if (!isMe)
           CircleAvatar(
-            backgroundImage: AssetImage(otherAvatar), // 显示远程用户头像
+            backgroundImage: AssetImage('assets/other_headImage.png'),
             radius: 20,
           ),
         SizedBox(width: 10),
         Container(
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.6),
+          constraints:
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.6),
           padding: EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isMe ? Colors.green[300] : Colors.white,
@@ -292,29 +315,31 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
           ),
           child: message['isImage']
               ? Image.memory(
-            base64Decode(message['message']), // 如果是图片，解码并显示图片
-            width: 200, // 设置图片宽度
-            height: 150, // 设置图片高度
-            fit: BoxFit.cover, // 图片适应框的方式
-          )
+                  base64Decode(message['message']),
+                  width: 200,
+                  height: 150,
+                  fit: BoxFit.cover,
+                )
               : message['isVoice']
-              ? Row(
-            children: [
-              Icon(Icons.play_arrow), // 语音播放按钮
-              SizedBox(width: 5),
-              Text("语音消息", style: TextStyle(color: isMe ? Colors.white : Colors.black)),
-            ],
-          )
-              : Text(
-            jsonEncode(message['message']),
-            style: TextStyle(
-                color: isMe ? Colors.white : Colors.black),
-          ),
+                  ? Row(
+                      children: [
+                        Icon(Icons.play_arrow),
+                        SizedBox(width: 5),
+                        Text("语音消息",
+                            style: TextStyle(
+                                color: isMe ? Colors.white : Colors.black)),
+                      ],
+                    )
+                  : Text(
+                      jsonEncode(message['message']),
+                      style:
+                          TextStyle(color: isMe ? Colors.white : Colors.black),
+                    ),
         ),
         SizedBox(width: 10),
         if (isMe)
           CircleAvatar(
-            backgroundImage: AssetImage(myAvatar), // 显示本地用户头像
+            backgroundImage: AssetImage('assets/my_headImage.png'),
             radius: 20,
           ),
       ],
@@ -325,7 +350,7 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('聊天'),
+        title: Text(widget.conversation.name),
       ),
       body: Column(
         children: <Widget>[
@@ -347,7 +372,7 @@ class _WebSocketConnectState extends State<WebSocketConnect> {
               children: <Widget>[
                 IconButton(
                   icon: Icon(Icons.add_circle_outline),
-                  onPressed: _showMoreOptions,
+                  onPressed: () {},
                 ),
                 Expanded(
                   child: TextField(
