@@ -34,6 +34,7 @@ dependencies:
   image_picker: ^0.8.6+1
   flutter_sound: ^9.2.13  # 添加 flutter_sound 依赖
   permission_handler: ^10.2.0 # 添加权限处理
+  path_provider: ^2.0.15
   http: ^0.13.3
 
 
