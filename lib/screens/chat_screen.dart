@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/message.dart';
@@ -20,9 +19,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   List<ChatMessage> messages = [];
-  final ImagePicker _picker = ImagePicker();
   FlutterSoundRecorder? _recorder;
-  bool _isRecording = false;
   final ScrollController _scrollController = ScrollController();
 
   @override

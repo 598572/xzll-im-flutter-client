@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/conversation.dart';
 import '../services/websocket_service.dart';
+import '../services/conversation_service.dart';
+import '../services/auth_service.dart';
 import 'chat_screen.dart';
 
 // 最近会话列表界面（支持长连接实时更新）
@@ -13,12 +15,14 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
   List<Conversation> _conversations = [];
   bool _isLoading = true;
   bool _isConnected = false;
+  final ConversationService _conversationService = ConversationService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
     _setupWebSocketListeners();
-    _connectWebSocket();
+    _loadConversations();
   }
 
   void _setupWebSocketListeners() {
@@ -49,28 +53,85 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
     };
   }
 
-  void _connectWebSocket() async {
-    print("🔗 开始连接WebSocket...");
-    bool connected = await WebSocketService.instance.connect('111', 't_value');
-    setState(() {
-      _isConnected = connected;
-    });
-    
-    if (connected) {
-      print('✅ WebSocket连接成功，等待会话列表数据...');
-    } else {
-      print('❌ WebSocket连接失败');
+  /// 加载会话列表
+  Future<void> _loadConversations() async {
+    if (!_authService.isLoggedIn) {
       setState(() {
         _isLoading = false;
+        _isConnected = false;
+      });
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // 首先尝试从真实API获取数据
+      var result = await _conversationService.getConversationList();
+      
+      if (result.success && result.data != null) {
+        setState(() {
+          _conversations = result.data!.records;
+          _isLoading = false;
+          _isConnected = true;
+        });
+        print('✅ 成功加载会话列表: ${_conversations.length} 个会话');
+      } else {
+        // 如果真实API失败，使用模拟数据
+        print('⚠️ 真实API加载失败，使用模拟数据: ${result.message}');
+        var mockResult = await _conversationService.getMockConversationList();
+        
+        if (mockResult.success && mockResult.data != null) {
+          setState(() {
+            _conversations = mockResult.data!.records;
+            _isLoading = false;
+            _isConnected = true;
+          });
+          print('✅ 成功加载模拟会话列表: ${_conversations.length} 个会话');
+        } else {
+          setState(() {
+            _isLoading = false;
+            _isConnected = false;
+          });
+          print('❌ 加载会话列表失败');
+        }
+      }
+
+      // 尝试连接WebSocket（用于实时消息更新）
+      _connectWebSocket();
+      
+    } catch (e) {
+      print('❌ 加载会话列表异常: $e');
+      setState(() {
+        _isLoading = false;
+        _isConnected = false;
       });
     }
   }
 
+  void _connectWebSocket() async {
+    if (!_authService.isLoggedIn || _authService.currentUser == null) {
+      return;
+    }
+
+    print("🔗 开始连接WebSocket...");
+    bool connected = await WebSocketService.instance.connect(
+      _authService.currentUser!.id, 
+      _authService.accessToken ?? 't_value'
+    );
+    
+    if (connected) {
+      print('✅ WebSocket连接成功');
+      // 注意：不要在这里再次设置 _isConnected，因为会话列表的连接状态主要看API调用是否成功
+    } else {
+      print('❌ WebSocket连接失败');
+    }
+  }
+
   void _refreshConversations() {
-    setState(() {
-      _isLoading = true;
-    });
-    WebSocketService.instance.requestConversations();
+    _loadConversations();
   }
 
   @override
@@ -78,9 +139,7 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          _refreshConversations();
-          // 等待一段时间让数据加载
-          await Future.delayed(Duration(seconds: 1));
+          await _loadConversations();
         },
         child: _buildBody(),
       ),
@@ -131,8 +190,8 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
           ),
           SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _connectWebSocket,
-            child: Text('重新连接'),
+            onPressed: _loadConversations,
+            child: Text('重新加载'),
           ),
         ],
       ),
@@ -254,16 +313,6 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
               color: Colors.grey[500],
             ),
           ),
-          SizedBox(height: 4),
-          // 连接状态指示器
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _isConnected ? Colors.green : Colors.red,
-              shape: BoxShape.circle,
-            ),
-          ),
         ],
       ),
       onTap: () {
@@ -273,6 +322,11 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
   }
 
   String _formatTime(String timestamp) {
+    // 如果已经是格式化的时间字符串，直接返回
+    if (timestamp.contains(':') || timestamp.contains('天') || timestamp.contains('昨天') || timestamp.contains('星期')) {
+      return timestamp;
+    }
+    
     try {
       DateTime dateTime = DateTime.parse(timestamp);
       DateTime now = DateTime.now();

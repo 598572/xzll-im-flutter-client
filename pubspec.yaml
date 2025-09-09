@@ -36,6 +36,7 @@ dependencies:
   permission_handler: ^10.2.0 # 添加权限处理
   path_provider: ^2.0.15
   http: ^0.13.3
+  shared_preferences: ^2.0.15 # 本地数据存储
 
 
 

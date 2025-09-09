@@ -11,7 +11,6 @@ class WebSocketService {
   static WebSocketService? _instance;
   WebSocketChannel? _channel;
   String? _currentUserId;
-  String? _token;
   bool _isConnected = false;
   List<String> _msgIds = [];
   bool _isGettingMsgIds = false;
@@ -199,7 +198,6 @@ class WebSocketService {
   Future<bool> connect(String userId, String token) async {
     try {
       _currentUserId = userId;
-      _token = token;
 
       print("🔗 开始连接WebSocket...");
       print("📱 用户ID: $userId");
