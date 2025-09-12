@@ -60,9 +60,9 @@ class ConversationService {
   factory ConversationService() => _instance;
   ConversationService._internal();
 
-  // API基础URL - 会话服务的地址，使用您的实际IP地址
-  static const String _baseUrl = 'http://192.168.1.5:8083'; 
-  static const String _conversationPath = '/hbase/test/send';
+  // API基础URL - 通过gateway代理到im-business服务
+  static const String _baseUrl = 'http://120.46.85.43:80'; 
+  static const String _conversationPath = '/im-business/api/chat/lastChatList';
   
   final AuthService _authService = AuthService();
 
@@ -84,7 +84,9 @@ class ConversationService {
         pageSize: pageSize,
       );
 
-      print('获取会话列表请求: ${request.toJson()}');
+      print('📤 发送会话列表请求: ${jsonEncode(request.toJson())}');
+      print('🔗 请求URL: $url');
+      print('📋 请求头: ${_authService.getAuthHeaders()}');
 
       final response = await http.post(
         url,
@@ -98,16 +100,32 @@ class ConversationService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         
-        if (jsonData['success'] == true || jsonData['code'] == 200) {
-          // 解析分页数据
-          final pageData = PageResponse.fromJson(
-            jsonData['data'] ?? jsonData,
-            (json) => _parseConversationFromJson(json),
-          );
-          
-          return ApiResponse.success(pageData);
+        if (jsonData['code'] == 1 || jsonData['success'] == true) {
+          // 服务端返回的是数组格式，需要转换为分页格式
+          final data = jsonData['data'];
+          if (data is List) {
+            // 将数组转换为分页格式
+            final conversations = data.map((json) => _parseConversationFromJson(json)).toList();
+            final pageData = PageResponse<Conversation>(
+              records: conversations,
+              total: conversations.length,
+              currentPage: 1,
+              pageSize: conversations.length,
+              hasNext: false,
+            );
+            return ApiResponse.success(pageData);
+          } else if (data is Map) {
+            // 如果服务端返回的是分页格式
+            final pageData = PageResponse.fromJson(
+              Map<String, dynamic>.from(data),
+              (json) => _parseConversationFromJson(json),
+            );
+            return ApiResponse.success(pageData);
+          } else {
+            return ApiResponse.error('数据格式不正确');
+          }
         } else {
-          return ApiResponse.error(jsonData['message'] ?? '获取会话列表失败');
+          return ApiResponse.error(jsonData['msg'] ?? jsonData['message'] ?? '获取会话列表失败');
         }
       } else if (response.statusCode == 401) {
         // Token可能过期，尝试刷新
@@ -120,7 +138,7 @@ class ConversationService {
         }
       } else {
         final errorData = jsonDecode(response.body);
-        return ApiResponse.error(errorData['message'] ?? '获取会话列表失败，请稍后重试');
+        return ApiResponse.error(errorData['msg'] ?? errorData['message'] ?? '获取会话列表失败，请稍后重试');
       }
     } catch (e) {
       print('获取会话列表异常: $e');
@@ -188,15 +206,82 @@ class ConversationService {
 
   /// 解析会话数据
   Conversation _parseConversationFromJson(Map<String, dynamic> json) {
-    // 根据实际的API响应格式调整字段映射
+    print('🔍 解析会话数据: $json');
+    
+    // 解析对方用户信息
+    // 尝试多种可能的字段名来获取目标用户ID
+    final targetUserId = json['targetUserId']?.toString() ?? 
+                        json['otherUserId']?.toString() ?? 
+                        json['friendUserId']?.toString() ??
+                        _extractUserIdFromChatId(json['chatId']?.toString());
+    final targetUserName = json['targetUserName'] ?? json['conversationName'] ?? json['name'];
+    final targetUserAvatar = json['targetUserAvatar'] ?? json['headImage'] ?? json['avatar'];
+    
+    // 解析最后消息信息
+    final lastMessageContent = json['lastMessageContent'] ?? json['lastMessage'] ?? '';
+    final lastMsgTime = json['lastMsgTime'] ?? json['lastMessageTime'] ?? json['updateTime'];
+    final lastMsgFormat = json['lastMsgFormat'] ?? 0;
+    
+    // 格式化最后消息内容（根据消息类型）
+    String formattedLastMessage = _formatLastMessage(lastMessageContent, lastMsgFormat);
+    
+    // 格式化时间戳
+    String formattedTimestamp = _formatTimestamp(_parseTimestamp(lastMsgTime));
+    
+    print('👤 对方信息: $targetUserName (ID: $targetUserId)');
+    print('💬 最后消息: $formattedLastMessage');
+    print('⏰ 时间: $formattedTimestamp');
+    
     return Conversation(
-      name: json['conversationName'] ?? json['name'] ?? json['targetUserName'] ?? '未知用户',
-      headImage: json['headImage'] ?? json['avatar'] ?? json['targetUserAvatar'] ?? 'assets/other_headImage.png',
-      lastMessage: json['lastMessage'] ?? json['lastMsgContent'] ?? '',
-      timestamp: _formatTimestamp(_parseTimestamp(json['lastMessageTime'] ?? json['updateTime'])),
-      userId: json['targetUserId'] ?? json['userId'] ?? json['conversationId']?.toString() ?? '',
-      unreadCount: json['unreadCount'] ?? json['unReadCount'] ?? 0,
+      name: targetUserName ?? '未知用户',
+      headImage: targetUserAvatar ?? 'assets/other_headImage.png',
+      lastMessage: formattedLastMessage,
+      timestamp: formattedTimestamp,
+      userId: json['chatId']?.toString() ?? json['userId']?.toString() ?? '',
+      unreadCount: (json['unReadCount'] ?? json['unreadCount'] ?? 0) as int,
+      targetUserId: targetUserId,
+      targetUserName: targetUserName,
+      targetUserAvatar: targetUserAvatar,
+      lastMsgFormat: lastMsgFormat,
+      lastMsgId: json['lastMsgId']?.toString(),
+      lastMsgTime: lastMsgTime,
     );
+  }
+
+  /// 从chatId中提取目标用户ID
+  String? _extractUserIdFromChatId(String? chatId) {
+    if (chatId == null || chatId.isEmpty) return null;
+    
+    // chatId格式: "100-1-1966369607918948352-1966479049087913984"
+    // 需要提取最后一个用户ID（不是当前用户的ID）
+    List<String> parts = chatId.split('-');
+    if (parts.length >= 4) {
+      // 返回最后一个用户ID
+      return parts.last;
+    }
+    return null;
+  }
+
+  /// 格式化最后消息内容
+  String _formatLastMessage(String content, int format) {
+    if (content.isEmpty) return '';
+    
+    switch (format) {
+      case 0: // 文本消息
+        return content;
+      case 1: // 图片消息
+        return '[图片]';
+      case 2: // 语音消息
+        return '[语音]';
+      case 3: // 视频消息
+        return '[视频]';
+      case 4: // 文件消息
+        return '[文件]';
+      case 5: // 位置消息
+        return '[位置]';
+      default:
+        return content;
+    }
   }
 
   /// 解析时间戳

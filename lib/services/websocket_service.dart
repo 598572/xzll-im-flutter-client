@@ -5,6 +5,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
+import 'auth_service.dart';
 
 // WebSocket服务类
 class WebSocketService {
@@ -84,8 +85,13 @@ class WebSocketService {
   // 获取单个消息ID（优先从缓存获取）
   Future<String?> getSingleMsgId() async {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，无法获取消息ID");
-      return null;
+      print("❌ WebSocket未连接，尝试重新连接...");
+      // 尝试重新连接
+      bool reconnected = await _attemptReconnect();
+      if (!reconnected) {
+        print("❌ 重新连接失败，无法获取消息ID");
+        return null;
+      }
     }
 
     // 如果缓存中有消息ID，直接返回
@@ -142,8 +148,13 @@ class WebSocketService {
   // 发送消息（使用指定的msgId）
   Future<bool> sendMessageWithId(String msgId, String content, String toUserId) async {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，无法发送消息");
-      return false;
+      print("❌ WebSocket未连接，尝试重新连接...");
+      // 尝试重新连接
+      bool reconnected = await _attemptReconnect();
+      if (!reconnected) {
+        print("❌ 重新连接失败，无法发送消息");
+        return false;
+      }
     }
 
     print("📤 准备发送消息...");
@@ -203,15 +214,20 @@ class WebSocketService {
       print("📱 用户ID: $userId");
       print("🔑 Token: $token");
 
+      final wsUrl = 'ws://120.46.85.43:80/websocket';
+      print("🌐 WebSocket连接地址: $wsUrl");
+
       final headers = {
         'Connection': 'Upgrade',
         'Upgrade': 'websocket',
-        'token': token,
-        'uid': userId,
+        'token': token,  // 服务端从ImConstant.TOKEN字段获取
+        'uid': userId,   // 用户ID，用于验证
       };
 
+      print("📋 WebSocket请求头: $headers");
+
       _channel = IOWebSocketChannel.connect(
-        'ws://120.46.85.43:80/websocket',
+        Uri.parse(wsUrl),
         headers: headers,
       );
 
@@ -251,6 +267,9 @@ class WebSocketService {
       switch (url) {
         case 'xzll/im/c2c/send':
           _handleC2CSendResponse(response);
+          break;
+        case 'xzll/im/c2c/receive':
+          _handleC2CReceiveMessage(response);
           break;
         case 'xzll/im/c2c/get/batch/msgId':
           _handleGetMsgIdsResponse(response);
@@ -346,11 +365,64 @@ class WebSocketService {
     _simulateReceivedAck(response);
   }
 
+  // 处理接收到的C2C消息
+  void _handleC2CReceiveMessage(Map<String, dynamic> response) {
+    print("📨 收到新消息: $response");
+    
+    try {
+      // 解析消息内容
+      String msgId = response['msgId'] ?? '';
+      String fromUserId = response['fromUserId'] ?? '';
+      String toUserId = response['toUserId'] ?? '';
+      String msgContent = response['msgContent'] ?? '';
+      int msgFormat = response['msgFormat'] ?? 0;
+      int msgCreateTime = response['msgCreateTime'] ?? DateTime.now().millisecondsSinceEpoch;
+      
+      print("📨 消息详情: ID=$msgId, 来自=$fromUserId, 内容=$msgContent");
+      
+      // 创建ChatMessage对象
+      ChatMessage message = ChatMessage(
+        msgId: msgId,
+        content: msgContent,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        type: MessageType.fromCode(msgFormat) ?? MessageType.textMsg,
+        status: MessageStatus.unRead,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(msgCreateTime),
+      );
+      
+      // 通知UI有新消息
+      if (onMessageReceived != null) {
+        onMessageReceived!(message);
+      }
+      
+      // 更新会话列表 - 创建或更新会话
+      _updateConversationOnNewMessage(message);
+      
+      // 发送接收确认
+      _sendReceivedAck(msgId, fromUserId, toUserId);
+      
+    } catch (e) {
+      print("❌ 处理接收消息失败: $e");
+    }
+  }
+
   // 模拟接收方发送接收确认
   void _simulateReceivedAck(Map<String, dynamic> response) {
     String msgId = _extractMsgId(response);
-    String fromUserId = response['body']?['fromUserId'] ?? '';
-    String toUserId = response['body']?['toUserId'] ?? '';
+    
+    // 从根级别提取用户ID（因为消息结构是根级别的字段）
+    String originalFromUserId = response['fromUserId'] ?? '';
+    String originalToUserId = response['toUserId'] ?? '';
+    
+    // 获取当前用户ID（接收方）
+    String currentUserId = _currentUserId ?? '';
+    
+    print("🔍 ACK调试信息:");
+    print("  📨 原始消息发送方: $originalFromUserId");
+    print("  📨 原始消息接收方: $originalToUserId");
+    print("  👤 当前用户ID: $currentUserId");
+    print("  🆔 消息ID: $msgId");
     
     // 延迟发送未读确认
     Future.delayed(Duration(seconds: 1), () {
@@ -358,9 +430,9 @@ class WebSocketService {
         'url': 'xzll/im/c2c/receivedAck',
         'body': {
           'msgId': msgId,
-          'fromUserId': toUserId, // 接收方确认
-          'toUserId': fromUserId, // 发送方
-          'msgStatus': 0, // 未读
+          'fromUserId': currentUserId, // 当前用户（接收方）发送确认
+          'toUserId': originalFromUserId, // 原消息发送方
+          'msgStatus': 3, // 未读 (UN_R·EAD)
         },
       };
       
@@ -373,9 +445,9 @@ class WebSocketService {
           'url': 'xzll/im/c2c/toUserReadAck',
           'body': {
             'msgId': msgId,
-            'fromUserId': toUserId, // 接收方确认
-            'toUserId': fromUserId, // 发送方
-            'msgStatus': 1, // 已读
+            'fromUserId': currentUserId, // 当前用户（接收方）发送确认
+            'toUserId': originalFromUserId, // 原消息发送方
+            'msgStatus': 4, // 已读 (READED)
           },
         };
         
@@ -460,8 +532,13 @@ class WebSocketService {
   // 发送消息
   Future<bool> sendMessage(String content, String toUserId) async {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，无法发送消息");
-      return false;
+      print("❌ WebSocket未连接，尝试重新连接...");
+      // 尝试重新连接
+      bool reconnected = await _attemptReconnect();
+      if (!reconnected) {
+        print("❌ 重新连接失败，无法发送消息");
+        return false;
+      }
     }
 
     print("📤 准备发送消息...");
@@ -509,6 +586,70 @@ class WebSocketService {
     }
   }
 
+  // 更新会话列表（收到新消息时）
+  void _updateConversationOnNewMessage(ChatMessage message) {
+    print("📋 更新会话列表 - 收到新消息");
+    
+    // 创建或更新会话
+    Conversation updatedConversation = Conversation(
+      name: message.fromUserId, // 暂时使用用户ID，实际应该获取用户名
+      headImage: 'assets/other_headImage.png', // 默认头像
+      lastMessage: _formatLastMessage(message.content, message.type.code),
+      timestamp: _formatTimestamp(message.timestamp),
+      userId: message.fromUserId, // 对方用户ID
+      unreadCount: 1, // 新消息，未读数量+1
+      targetUserId: message.fromUserId,
+      targetUserName: message.fromUserId, // 暂时使用用户ID
+      targetUserAvatar: 'assets/other_headImage.png',
+      lastMsgFormat: message.type.code,
+      lastMsgId: message.msgId,
+      lastMsgTime: message.timestamp.millisecondsSinceEpoch,
+    );
+    
+    // 通知UI更新会话
+    if (onConversationUpdated != null) {
+      onConversationUpdated!(updatedConversation);
+    }
+  }
+
+  // 格式化最后消息内容
+  String _formatLastMessage(String content, int format) {
+    if (content.isEmpty) return '';
+    
+    switch (format) {
+      case 0: // 文本消息
+        return content;
+      case 1: // 图片消息
+        return '[图片]';
+      case 2: // 语音消息
+        return '[语音]';
+      case 3: // 视频消息
+        return '[视频]';
+      case 4: // 文件消息
+        return '[文件]';
+      case 5: // 位置消息
+        return '[位置]';
+      default:
+        return content;
+    }
+  }
+
+  // 格式化时间戳
+  String _formatTimestamp(DateTime timestamp) {
+    DateTime now = DateTime.now();
+    Duration difference = now.difference(timestamp);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays}天前';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}小时前';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}分钟前';
+    } else {
+      return '刚刚';
+    }
+  }
+
   // 发送接收确认
   void sendReceivedAck(String msgId, String fromUserId, String toUserId) {
     print("📥 发送接收确认...");
@@ -518,11 +659,16 @@ class WebSocketService {
         'msgId': msgId,
         'fromUserId': fromUserId,
         'toUserId': toUserId,
-        'msgStatus': 0, // 未读
+        'msgStatus': 3, // 未读 (UN_READ)
       },
     };
     _channel?.sink.add(jsonEncode(request));
     print("📥 发送接收确认完成: ${jsonEncode(request)}");
+  }
+
+  // 内部发送接收确认方法
+  void _sendReceivedAck(String msgId, String fromUserId, String toUserId) {
+    sendReceivedAck(msgId, toUserId, fromUserId); // 注意参数顺序
   }
 
   // 发送已读确认
@@ -534,7 +680,7 @@ class WebSocketService {
         'msgId': msgId,
         'fromUserId': fromUserId,
         'toUserId': toUserId,
-        'msgStatus': 1, // 已读
+        'msgStatus': 4, // 已读 (READED)
       },
     };
     _channel?.sink.add(jsonEncode(request));
@@ -556,6 +702,36 @@ class WebSocketService {
     _channel?.sink.add(jsonEncode(request));
     print("🗑️ 撤回消息完成: ${jsonEncode(request)}");
   }
+
+  // 尝试重新连接
+  Future<bool> _attemptReconnect() async {
+    if (_currentUserId == null) {
+      print("❌ 无法重连：用户ID为空");
+      return false;
+    }
+
+    print("🔄 尝试重新连接WebSocket...");
+    
+    // 从AuthService获取最新的token
+    final authService = AuthService();
+    if (!authService.isLoggedIn || authService.currentUser == null) {
+      print("❌ 无法重连：用户未登录");
+      return false;
+    }
+
+    // 关闭旧连接
+    _channel?.sink.close();
+    _isConnected = false;
+
+    // 重新连接
+    return await connect(_currentUserId!, authService.accessToken ?? '');
+  }
+
+  // 检查连接状态
+  bool get isConnected => _isConnected;
+
+  // 获取当前用户ID
+  String? get currentUserId => _currentUserId;
 
   // 断开连接
   void disconnect() {

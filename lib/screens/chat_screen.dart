@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
 import '../services/websocket_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/message_bubble.dart';
 
 // 聊天窗口
@@ -39,8 +40,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _connectWebSocket() async {
+    // 从认证服务获取真实的用户信息
+    final authService = AuthService();
+    if (!authService.isLoggedIn || authService.currentUser == null) {
+      print('❌ 用户未登录，无法连接WebSocket');
+      return;
+    }
+
     print("🔗 开始连接WebSocket...");
-    bool connected = await WebSocketService.instance.connect('111', 't_value');
+    bool connected = await WebSocketService.instance.connect(
+      authService.currentUser!.id, 
+      authService.accessToken ?? ''
+    );
     if (connected) {
       print('✅ WebSocket连接成功');
     } else {
@@ -52,21 +63,41 @@ class _ChatScreenState extends State<ChatScreen> {
     // 监听消息状态变化
     WebSocketService.instance.onMessageStatusChanged = (String msgId, MessageStatus status) {
       print("📊 消息状态更新: $msgId -> $status");
-      setState(() {
-        int index = messages.indexWhere((m) => m.msgId == msgId);
-        if (index != -1) {
-          messages[index] = ChatMessage(
-            msgId: messages[index].msgId,
-            content: messages[index].content,
-            fromUserId: messages[index].fromUserId,
-            toUserId: messages[index].toUserId,
-            type: messages[index].type,
-            status: status,
-            timestamp: messages[index].timestamp,
-            withdrawStatus: messages[index].withdrawStatus,
-          );
-        }
-      });
+      // 检查Widget是否还在树中
+      if (mounted) {
+        setState(() {
+          int index = messages.indexWhere((m) => m.msgId == msgId);
+          if (index != -1) {
+            messages[index] = ChatMessage(
+              msgId: messages[index].msgId,
+              content: messages[index].content,
+              fromUserId: messages[index].fromUserId,
+              toUserId: messages[index].toUserId,
+              type: messages[index].type,
+              status: status,
+              timestamp: messages[index].timestamp,
+              withdrawStatus: messages[index].withdrawStatus,
+            );
+          }
+        });
+      } else {
+        print("⚠️ Widget已销毁，跳过setState调用");
+      }
+    };
+
+    // 监听接收到的消息
+    WebSocketService.instance.onMessageReceived = (ChatMessage message) {
+      print("📨 收到新消息: ${message.content}");
+      // 检查Widget是否还在树中
+      if (mounted) {
+        setState(() {
+          messages.add(message);
+        });
+        // 滚动到底部显示新消息
+        _scrollToBottom();
+      } else {
+        print("⚠️ Widget已销毁，跳过接收消息处理");
+      }
     };
   }
 
@@ -84,46 +115,63 @@ class _ChatScreenState extends State<ChatScreen> {
 
     print("🆔 获取到消息ID: $msgId");
     
+    // 获取当前用户ID
+    final authService = AuthService();
+    final currentUserId = authService.currentUser?.id ?? '';
+    
+    // 获取目标用户ID（优先使用targetUserId，如果没有则使用userId）
+    String targetUserId = widget.conversation.targetUserId ?? widget.conversation.userId;
+    
+    print("🔍 发送消息调试信息:");
+    print("  📱 当前用户ID: $currentUserId");
+    print("  🎯 目标用户ID: $targetUserId");
+    print("  💬 会话userId: ${widget.conversation.userId}");
+    print("  👤 会话targetUserId: ${widget.conversation.targetUserId}");
+    
     // 创建消息（使用真实的消息ID和发送中状态）
     ChatMessage message = ChatMessage(
       msgId: msgId,
       content: content,
-      fromUserId: '111',
-      toUserId: widget.conversation.userId,
+      fromUserId: currentUserId,
+      toUserId: targetUserId,
       type: MessageType.textMsg,
       status: MessageStatus.serverReceived, // 使用serverReceived作为发送中状态
       timestamp: DateTime.now(),
     );
     
-    setState(() {
-      messages.add(message);
-    });
+    if (mounted) {
+      setState(() {
+        messages.add(message);
+      });
+    }
 
     // 发送到服务器
     bool success = await WebSocketService.instance.sendMessageWithId(
       msgId,
       content,
-      widget.conversation.userId,
+      targetUserId,
     );
 
     if (!success) {
       print("❌ 发送消息失败，更新消息状态为失败");
       // 更新消息状态为失败
-      setState(() {
-        int index = messages.indexWhere((m) => m.msgId == msgId);
-        if (index != -1) {
-          messages[index] = ChatMessage(
-            msgId: messages[index].msgId,
-            content: messages[index].content,
-            fromUserId: messages[index].fromUserId,
-            toUserId: messages[index].toUserId,
-            type: messages[index].type,
-            status: MessageStatus.fail,
-            timestamp: messages[index].timestamp,
-            withdrawStatus: messages[index].withdrawStatus,
-          );
-        }
-      });
+      if (mounted) {
+        setState(() {
+          int index = messages.indexWhere((m) => m.msgId == msgId);
+          if (index != -1) {
+            messages[index] = ChatMessage(
+              msgId: messages[index].msgId,
+              content: messages[index].content,
+              fromUserId: messages[index].fromUserId,
+              toUserId: messages[index].toUserId,
+              type: messages[index].type,
+              status: MessageStatus.fail,
+              timestamp: messages[index].timestamp,
+              withdrawStatus: messages[index].withdrawStatus,
+            );
+          }
+        });
+      }
     } else {
       print("✅ 消息发送成功，等待服务器确认");
     }
@@ -176,9 +224,11 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
+                final authService = AuthService();
+                final currentUserId = authService.currentUser?.id ?? '';
                 return MessageBubble(
                   message: messages[index],
-                  isMe: messages[index].fromUserId == '111',
+                  isMe: messages[index].fromUserId == currentUserId,
                 );
               },
             ),
@@ -247,6 +297,11 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.dispose();
     _scrollController.dispose();
     _recorder?.closeRecorder();
+    
+    // 清理WebSocket回调，避免内存泄漏
+    WebSocketService.instance.onMessageStatusChanged = null;
+    WebSocketService.instance.onMessageReceived = null;
+    
     super.dispose();
   }
 }

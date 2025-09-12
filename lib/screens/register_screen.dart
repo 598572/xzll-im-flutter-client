@@ -311,6 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: '密码',
+                    hintText: '至少8位，只能包含字母和数字',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -338,11 +339,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return '请输入密码';
                     }
-                    if (value.length < 6) {
-                      return '密码长度不能少于6位';
+                    if (value.length < 8) {
+                      return '密码长度不能少于8位';
                     }
                     if (value.length > 20) {
                       return '密码长度不能超过20位';
+                    }
+                    // 检查是否包含字母和数字
+                    final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(value);
+                    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
+                    if (!hasLetter || !hasDigit) {
+                      return '密码必须包含字母和数字';
+                    }
+                    // 检查是否只包含字母和数字（不允许特殊字符）
+                    final onlyLettersAndDigits = RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value);
+                    if (!onlyLettersAndDigits) {
+                      return '密码只能包含字母和数字';
                     }
                     return null;
                   },

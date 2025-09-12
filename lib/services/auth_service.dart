@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
@@ -10,7 +11,7 @@ class AuthService {
   AuthService._internal();
 
   // API基础URL - 使用您的实际IP地址
-  static const String _baseUrl = 'http://192.168.1.5:8081'; // 开发机器IP地址
+  static const String _baseUrl = 'http://120.46.85.43:80'; // 你的服务器地址
   static const String _authPath = '/im-auth';
   
   // 存储键名
@@ -83,10 +84,14 @@ class AuthService {
       print('注册请求: ${request.toJson()}');
       print('注册响应状态: ${response.statusCode}');
       print('注册响应内容: ${response.body}');
+      print('注册响应头: ${response.headers}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        if (jsonData['success'] == true || jsonData['code'] == 200) {
+        print('注册响应解析: $jsonData');
+        
+        // 检查注册是否成功 - 服务端成功时code为1，失败时为-200
+        if (jsonData['code'] == 1 || jsonData['success'] == true) {
           // 注册成功，解析用户信息
           User user;
           if (jsonData['data'] != null) {
@@ -102,11 +107,12 @@ class AuthService {
           }
           return ApiResponse.success(user);
         } else {
-          return ApiResponse.error(jsonData['message'] ?? '注册失败');
+          // 注册失败
+          return ApiResponse.error(jsonData['msg'] ?? jsonData['message'] ?? '注册失败');
         }
       } else {
         final errorData = jsonDecode(response.body);
-        return ApiResponse.error(errorData['message'] ?? '注册失败，请稍后重试');
+        return ApiResponse.error(errorData['msg'] ?? errorData['message'] ?? '注册失败，请稍后重试');
       }
     } catch (e) {
       print('注册异常: $e');
@@ -131,31 +137,34 @@ class AuthService {
       print('登录响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
-        final authResponse = AuthResponse.fromJson(jsonDecode(response.body));
+        final jsonData = jsonDecode(response.body);
+        print('登录响应解析: $jsonData');
         
-        if (authResponse.isSuccess) {
-          _accessToken = authResponse.accessToken;
-          _refreshToken = authResponse.refreshToken;
-          _deviceType = request.deviceType;
+        // 检查登录是否成功 - 服务端成功时code为1
+        if (jsonData['code'] == 1) {
+          final data = jsonData['data'];
+          if (data != null) {
+            _accessToken = data['token'];
+            _refreshToken = data['refreshToken'];
+            _deviceType = request.deviceType;
 
-          // 解析用户信息（如果token中包含用户信息）
-          if (authResponse.user != null) {
-            _currentUser = authResponse.user;
-          } else {
             // 从JWT token中解析用户信息
             _currentUser = _parseUserFromToken(_accessToken!);
+
+            // 保存到本地存储
+            await _saveToLocalStorage();
+
+            return ApiResponse.success(_currentUser!);
+          } else {
+            return ApiResponse.error('登录响应数据为空');
           }
-
-          // 保存到本地存储
-          await _saveToLocalStorage();
-
-          return ApiResponse.success(_currentUser!);
         } else {
-          return ApiResponse.error(authResponse.errorDescription ?? '登录失败');
+          // 登录失败
+          return ApiResponse.error(jsonData['msg'] ?? '登录失败');
         }
       } else {
         final errorData = jsonDecode(response.body);
-        return ApiResponse.error(errorData['error_description'] ?? '登录失败，请检查用户名和密码');
+        return ApiResponse.error(errorData['msg'] ?? errorData['error_description'] ?? '登录失败，请检查用户名和密码');
       }
     } catch (e) {
       print('登录异常: $e');

@@ -38,18 +38,35 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
     // 监听单个会话更新
     WebSocketService.instance.onConversationUpdated = (Conversation conversation) {
       print("📋 收到会话更新: ${conversation.name}");
-      setState(() {
-        // 查找并更新对应的会话
-        int index = _conversations.indexWhere((c) => c.userId == conversation.userId);
-        if (index != -1) {
-          _conversations[index] = conversation;
-        } else {
-          // 如果是新会话，添加到列表顶部
-          _conversations.insert(0, conversation);
-        }
-        // 按时间排序
-        _conversations.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      });
+      if (mounted) {
+        setState(() {
+          // 查找并更新对应的会话
+          int index = _conversations.indexWhere((c) => c.userId == conversation.userId);
+          if (index != -1) {
+            // 更新现有会话，累加未读数量
+            Conversation existingConversation = _conversations[index];
+            _conversations[index] = Conversation(
+              name: conversation.name,
+              headImage: conversation.headImage,
+              lastMessage: conversation.lastMessage,
+              timestamp: conversation.timestamp,
+              userId: conversation.userId,
+              unreadCount: existingConversation.unreadCount + conversation.unreadCount, // 累加未读数量
+              targetUserId: conversation.targetUserId,
+              targetUserName: conversation.targetUserName,
+              targetUserAvatar: conversation.targetUserAvatar,
+              lastMsgFormat: conversation.lastMsgFormat,
+              lastMsgId: conversation.lastMsgId,
+              lastMsgTime: conversation.lastMsgTime,
+            );
+          } else {
+            // 如果是新会话，添加到列表顶部
+            _conversations.insert(0, conversation);
+          }
+          // 按时间排序
+          _conversations.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        });
+      }
     };
   }
 
@@ -79,24 +96,14 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
         });
         print('✅ 成功加载会话列表: ${_conversations.length} 个会话');
       } else {
-        // 如果真实API失败，使用模拟数据
-        print('⚠️ 真实API加载失败，使用模拟数据: ${result.message}');
-        var mockResult = await _conversationService.getMockConversationList();
-        
-        if (mockResult.success && mockResult.data != null) {
-          setState(() {
-            _conversations = mockResult.data!.records;
-            _isLoading = false;
-            _isConnected = true;
-          });
-          print('✅ 成功加载模拟会话列表: ${_conversations.length} 个会话');
-        } else {
-          setState(() {
-            _isLoading = false;
-            _isConnected = false;
-          });
-          print('❌ 加载会话列表失败');
-        }
+        // 如果真实API失败，显示错误信息（暂时不使用模拟数据）
+        print('❌ 真实API加载失败: ${result.message}');
+        setState(() {
+          _conversations = [];
+          _isLoading = false;
+          _isConnected = false;
+        });
+        print('❌ 加载会话列表失败，请检查网络连接或API配置');
       }
 
       // 尝试连接WebSocket（用于实时消息更新）
