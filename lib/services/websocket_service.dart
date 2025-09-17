@@ -5,6 +5,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
+import '../models/friend.dart';
 import 'auth_service.dart';
 
 // WebSocket服务类
@@ -24,6 +25,9 @@ class WebSocketService {
   // 会话列表回调
   Function(List<Conversation> conversations)? onConversationsUpdated;
   Function(Conversation conversation)? onConversationUpdated;
+  
+  // 好友申请推送回调
+  Function(FriendRequestPushMessage pushMessage)? onFriendRequestPush;
 
   static WebSocketService get instance {
     _instance ??= WebSocketService._();
@@ -293,6 +297,12 @@ class WebSocketService {
         case 'xzll/im/conversation/update':
           _handleConversationUpdateResponse(response);
           break;
+        case 'xzll/im/friend/request/push':
+          _handleFriendRequestPush(response);
+          break;
+        case 'xzll/im/friend/request/handle/push':
+          _handleFriendRequestHandlePush(response);
+          break;
         default:
           print("❓ 未知消息类型: $url");
       }
@@ -339,6 +349,46 @@ class WebSocketService {
       }
     } catch (e) {
       print("❌ 解析会话更新失败: $e");
+    }
+  }
+
+  // 处理好友申请推送
+  void _handleFriendRequestPush(Map<String, dynamic> response) {
+    print("👥 收到好友申请推送");
+    
+    try {
+      var pushData = response['body'] ?? response['data'];
+      if (pushData != null) {
+        FriendRequestPushMessage pushMessage = FriendRequestPushMessage.fromJson(pushData);
+        print("👥 好友申请推送: ${pushMessage.pushContent}");
+        
+        // 通知UI处理好友申请推送
+        if (onFriendRequestPush != null) {
+          onFriendRequestPush!(pushMessage);
+        }
+      }
+    } catch (e) {
+      print("❌ 解析好友申请推送失败: $e");
+    }
+  }
+
+  // 处理好友申请处理结果推送
+  void _handleFriendRequestHandlePush(Map<String, dynamic> response) {
+    print("👥 收到好友申请处理结果推送");
+    
+    try {
+      var pushData = response['body'] ?? response['data'];
+      if (pushData != null) {
+        FriendRequestPushMessage pushMessage = FriendRequestPushMessage.fromJson(pushData);
+        print("👥 好友申请处理结果: ${pushMessage.pushContent}");
+        
+        // 通知UI处理好友申请处理结果推送
+        if (onFriendRequestPush != null) {
+          onFriendRequestPush!(pushMessage);
+        }
+      }
+    } catch (e) {
+      print("❌ 解析好友申请处理结果推送失败: $e");
     }
   }
 

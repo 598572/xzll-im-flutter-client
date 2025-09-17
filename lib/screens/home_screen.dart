@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'recent_conversations_screen.dart';
 import 'login_screen.dart';
+import 'friend_list_screen.dart';
+import 'user_search_screen.dart';
 import '../services/auth_service.dart';
+import '../services/websocket_service.dart';
+import '../models/friend.dart';
 
 // 主页屏幕，包含底部导航栏
 class HomeScreen extends StatefulWidget {
@@ -12,13 +16,73 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final AuthService _authService = AuthService();
+  final WebSocketService _webSocketService = WebSocketService.instance;
 
   List<Widget> get _widgetOptions => <Widget>[
     RecentConversationsScreen(),
-    _buildContactsScreen(),
+    const FriendListScreen(),
     _buildDiscoverScreen(),
     _buildProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _setupFriendRequestPushListener();
+  }
+
+  /// 设置好友申请推送监听
+  void _setupFriendRequestPushListener() {
+    _webSocketService.onFriendRequestPush = (FriendRequestPushMessage pushMessage) {
+      _handleFriendRequestPush(pushMessage);
+    };
+  }
+
+  /// 处理好友申请推送
+  void _handleFriendRequestPush(FriendRequestPushMessage pushMessage) {
+    // 显示推送通知
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                pushMessage.isNewRequest ? Icons.person_add : Icons.notifications,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      pushMessage.pushTitle ?? '好友通知',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    if (pushMessage.pushContent != null)
+                      Text(pushMessage.pushContent!),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: pushMessage.isNewRequest ? Colors.purple : Colors.green,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: '查看',
+            textColor: Colors.white,
+            onPressed: () {
+              // 跳转到通讯录标签页
+              setState(() {
+                _selectedIndex = 1;
+              });
+            },
+          ),
+        ),
+      );
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -26,19 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // 构建通讯录页面
-  Widget _buildContactsScreen() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.contacts_outlined, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('通讯录功能开发中...', style: TextStyle(fontSize: 18, color: Colors.grey)),
-        ],
-      ),
-    );
-  }
 
   // 构建发现页面
   Widget _buildDiscoverScreen() {
@@ -357,8 +408,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                   break;
                 case 'add_friend':
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('添加朋友功能开发中...')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UserSearchScreen()),
                   );
                   break;
                 case 'scan_qr':
