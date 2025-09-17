@@ -214,7 +214,8 @@ class WebSocketService {
       print("📱 用户ID: $userId");
       print("🔑 Token: $token");
 
-      final wsUrl = 'ws://120.46.85.43:80/websocket';
+      //url 添加userId参数支持nginx一致性哈希负载均衡
+      final wsUrl = 'ws://120.46.85.43:80/websocket?userId=$userId';
       print("🌐 WebSocket连接地址: $wsUrl");
 
       final headers = {
