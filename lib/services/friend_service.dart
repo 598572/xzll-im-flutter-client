@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/friend.dart';
-import '../models/user.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
+import 'package:xzll_im_flutter_client/models/domain/friend_request.dart';
+import 'package:xzll_im_flutter_client/models/domain/user_search_result.dart';
+import 'package:xzll_im_flutter_client/models/request_model.dart';
+import '../models/domain/friend.dart';
 import 'auth_service.dart';
 
 /// 好友管理服务
@@ -14,7 +18,7 @@ class FriendService {
   // API基础URL
   static const String _baseUrl = 'http://120.46.85.43:80';
   static const String _businessPath = '/api';
-  
+
   final AuthService _authService = AuthService();
 
   /// 搜索用户
@@ -27,16 +31,18 @@ class FriendService {
         body: jsonEncode(request.toJson()),
       );
 
-      print('搜索用户请求: ${request.toJson()}');
-      print('搜索用户响应状态: ${response.statusCode}');
-      print('搜索用户响应内容: ${response.body}');
+      info('搜索用户请求: ${request.toJson()}');
+      info('搜索用户响应状态: ${response.statusCode}');
+      info('搜索用户响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           List<dynamic> data = jsonData['data'] ?? [];
-          List<UserSearchResult> users = data.map((item) => UserSearchResult.fromJson(item)).toList();
+          List<UserSearchResult> users = data
+              .map((item) => UserSearchResult.fromJson(item))
+              .toList();
           return ApiResponse.success(users);
         } else {
           return ApiResponse.error(jsonData['msg'] ?? '搜索失败');
@@ -45,7 +51,7 @@ class FriendService {
         return ApiResponse.error('搜索失败，请稍后重试');
       }
     } catch (e) {
-      print('搜索用户异常: $e');
+      info('搜索用户异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -60,13 +66,13 @@ class FriendService {
         body: jsonEncode(request.toJson()),
       );
 
-      print('发送好友申请请求: ${request.toJson()}');
-      print('发送好友申请响应状态: ${response.statusCode}');
-      print('发送好友申请响应内容: ${response.body}');
+      info('发送好友申请请求: ${request.toJson()}');
+      info('发送好友申请响应状态: ${response.statusCode}');
+      info('发送好友申请响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           String requestId = jsonData['data']?.toString() ?? '';
           return ApiResponse.success(requestId);
@@ -77,7 +83,7 @@ class FriendService {
         return ApiResponse.error('发送好友申请失败，请稍后重试');
       }
     } catch (e) {
-      print('发送好友申请异常: $e');
+      info('发送好友申请异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -92,13 +98,13 @@ class FriendService {
         body: jsonEncode(request.toJson()),
       );
 
-      print('处理好友申请请求: ${request.toJson()}');
-      print('处理好友申请响应状态: ${response.statusCode}');
-      print('处理好友申请响应内容: ${response.body}');
+      info('处理好友申请请求: ${request.toJson()}');
+      info('处理好友申请响应状态: ${response.statusCode}');
+      info('处理好友申请响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           bool result = jsonData['data'] ?? false;
           return ApiResponse.success(result);
@@ -109,13 +115,15 @@ class FriendService {
         return ApiResponse.error('处理好友申请失败，请稍后重试');
       }
     } catch (e) {
-      print('处理好友申请异常: $e');
+      info('处理好友申请异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
 
   /// 获取好友申请列表
-  Future<ApiResponse<List<FriendRequest>>> getFriendRequestList(FriendRequestListRequest request) async {
+  Future<ApiResponse<List<FriendRequest>>> getFriendRequestList(
+    FriendRequestListRequest request,
+  ) async {
     try {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/request/list');
       final response = await http.post(
@@ -124,13 +132,13 @@ class FriendService {
         body: jsonEncode(request.toJson()),
       );
 
-      print('获取好友申请列表请求: ${request.toJson()}');
-      print('获取好友申请列表响应状态: ${response.statusCode}');
-      print('获取好友申请列表响应内容: ${response.body}');
+      info('获取好友申请列表请求: ${request.toJson()}');
+      info('获取好友申请列表响应状态: ${response.statusCode}');
+      info('获取好友申请列表响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           List<dynamic> data = jsonData['data'] ?? [];
           List<FriendRequest> requests = data.map((item) => FriendRequest.fromJson(item)).toList();
@@ -142,7 +150,7 @@ class FriendService {
         return ApiResponse.error('获取好友申请列表失败，请稍后重试');
       }
     } catch (e) {
-      print('获取好友申请列表异常: $e');
+      info('获取好友申请列表异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -157,13 +165,13 @@ class FriendService {
         body: jsonEncode(request.toJson()),
       );
 
-      print('获取好友列表请求: ${request.toJson()}');
-      print('获取好友列表响应状态: ${response.statusCode}');
-      print('获取好友列表响应内容: ${response.body}');
+      info('获取好友列表请求: ${request.toJson()}');
+      info('获取好友列表响应状态: ${response.statusCode}');
+      info('获取好友列表响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           List<dynamic> data = jsonData['data'] ?? [];
           List<Friend> friends = data.map((item) => Friend.fromJson(item)).toList();
@@ -175,7 +183,7 @@ class FriendService {
         return ApiResponse.error('获取好友列表失败，请稍后重试');
       }
     } catch (e) {
-      print('获取好友列表异常: $e');
+      info('获取好友列表异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -184,24 +192,21 @@ class FriendService {
   Future<ApiResponse<bool>> deleteFriend(String userId, String friendId) async {
     try {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/delete');
-      final requestBody = {
-        'userId': userId,
-        'friendId': friendId,
-      };
-      
+      final requestBody = {'userId': userId, 'friendId': friendId};
+
       final response = await http.post(
         url,
         headers: _authService.getAuthHeaders(),
         body: jsonEncode(requestBody),
       );
 
-      print('删除好友请求: $requestBody');
-      print('删除好友响应状态: ${response.statusCode}');
-      print('删除好友响应内容: ${response.body}');
+      info('删除好友请求: $requestBody');
+      info('删除好友响应状态: ${response.statusCode}');
+      info('删除好友响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           bool result = jsonData['data'] ?? false;
           return ApiResponse.success(result);
@@ -212,7 +217,7 @@ class FriendService {
         return ApiResponse.error('删除好友失败，请稍后重试');
       }
     } catch (e) {
-      print('删除好友异常: $e');
+      info('删除好友异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -221,25 +226,21 @@ class FriendService {
   Future<ApiResponse<bool>> blockFriend(String userId, String friendId, int blackFlag) async {
     try {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/block');
-      final requestBody = {
-        'userId': userId,
-        'friendId': friendId,
-        'blackFlag': blackFlag,
-      };
-      
+      final requestBody = {'userId': userId, 'friendId': friendId, 'blackFlag': blackFlag};
+
       final response = await http.post(
         url,
         headers: _authService.getAuthHeaders(),
         body: jsonEncode(requestBody),
       );
 
-      print('拉黑好友请求: $requestBody');
-      print('拉黑好友响应状态: ${response.statusCode}');
-      print('拉黑好友响应内容: ${response.body}');
+      info('拉黑好友请求: $requestBody');
+      info('拉黑好友响应状态: ${response.statusCode}');
+      info('拉黑好友响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         if (jsonData['code'] == 200) {
           bool result = jsonData['data'] ?? false;
           return ApiResponse.success(result);
@@ -250,7 +251,7 @@ class FriendService {
         return ApiResponse.error('操作失败，请稍后重试');
       }
     } catch (e) {
-      print('拉黑好友异常: $e');
+      info('拉黑好友异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -298,7 +299,10 @@ class FriendService {
   }
 
   /// 快速搜索用户（常用功能封装）
-  Future<ApiResponse<List<UserSearchResult>>> quickSearchUsers(String keyword, String currentUserId) async {
+  Future<ApiResponse<List<UserSearchResult>>> quickSearchUsers(
+    String keyword,
+    String currentUserId,
+  ) async {
     final request = UserSearchRequest(
       keyword: keyword,
       searchType: 2, // 模糊搜索

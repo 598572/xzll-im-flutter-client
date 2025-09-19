@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/conversation.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import '../models/domain/conversation.dart';
 import '../services/websocket_service.dart';
 import '../services/conversation_service.dart';
 import '../services/auth_service.dart';
@@ -7,8 +8,10 @@ import 'chat_screen.dart';
 
 // 最近会话列表界面（支持长连接实时更新）
 class RecentConversationsScreen extends StatefulWidget {
+  const RecentConversationsScreen({super.key});
+
   @override
-  _RecentConversationsScreenState createState() => _RecentConversationsScreenState();
+  State createState() => _RecentConversationsScreenState();
 }
 
 class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
@@ -28,7 +31,7 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
   void _setupWebSocketListeners() {
     // 监听会话列表更新
     WebSocketService.instance.onConversationsUpdated = (List<Conversation> conversations) {
-      print("📋 收到会话列表更新: ${conversations.length} 个会话");
+      info("📋 收到会话列表更新: ${conversations.length} 个会话");
       setState(() {
         _conversations = conversations;
         _isLoading = false;
@@ -37,7 +40,7 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
 
     // 监听单个会话更新
     WebSocketService.instance.onConversationUpdated = (Conversation conversation) {
-      print("📋 收到会话更新: ${conversation.name}");
+      info("📋 收到会话更新: ${conversation.name}");
       if (mounted) {
         setState(() {
           // 查找并更新对应的会话
@@ -94,23 +97,23 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
           _isLoading = false;
           _isConnected = true;
         });
-        print('✅ 成功加载会话列表: ${_conversations.length} 个会话');
+        info('✅ 成功加载会话列表: ${_conversations.length} 个会话');
       } else {
         // 如果真实API失败，显示错误信息（暂时不使用模拟数据）
-        print('❌ 真实API加载失败: ${result.message}');
+        info('❌ 真实API加载失败: ${result.message}');
         setState(() {
           _conversations = [];
           _isLoading = false;
           _isConnected = false;
         });
-        print('❌ 加载会话列表失败，请检查网络连接或API配置');
+        info('❌ 加载会话列表失败，请检查网络连接或API配置');
       }
 
       // 尝试连接WebSocket（用于实时消息更新）
       _connectWebSocket();
       
     } catch (e) {
-      print('❌ 加载会话列表异常: $e');
+      info('❌ 加载会话列表异常: $e');
       setState(() {
         _isLoading = false;
         _isConnected = false;
@@ -123,17 +126,17 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
       return;
     }
 
-    print("🔗 开始连接WebSocket...");
+    info("🔗 开始连接WebSocket...");
     bool connected = await WebSocketService.instance.connect(
       _authService.currentUser!.id, 
       _authService.accessToken ?? 't_value'
     );
     
     if (connected) {
-      print('✅ WebSocket连接成功');
+      info('✅ WebSocket连接成功');
       // 注意：不要在这里再次设置 _isConnected，因为会话列表的连接状态主要看API调用是否成功
     } else {
-      print('❌ WebSocket连接失败');
+      info('❌ WebSocket连接失败');
     }
   }
 

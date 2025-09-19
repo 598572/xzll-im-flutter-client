@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/conversation.dart';
-import '../models/user.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
+import '../models/domain/conversation.dart';
 import '../services/auth_service.dart';
 
 // 会话列表请求模型
@@ -84,9 +85,9 @@ class ConversationService {
         pageSize: pageSize,
       );
 
-      print('📤 发送会话列表请求: ${jsonEncode(request.toJson())}');
-      print('🔗 请求URL: $url');
-      print('📋 请求头: ${_authService.getAuthHeaders()}');
+      info('📤 发送会话列表请求: ${jsonEncode(request.toJson())}');
+      info('🔗 请求URL: $url');
+      info('📋 请求头: ${_authService.getAuthHeaders()}');
 
       final response = await http.post(
         url,
@@ -94,8 +95,8 @@ class ConversationService {
         body: jsonEncode(request.toJson()),
       );
 
-      print('会话列表响应状态: ${response.statusCode}');
-      print('会话列表响应内容: ${response.body}');
+      info('会话列表响应状态: ${response.statusCode}');
+      info('会话列表响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
@@ -141,7 +142,7 @@ class ConversationService {
         return ApiResponse.error(errorData['msg'] ?? errorData['message'] ?? '获取会话列表失败，请稍后重试');
       }
     } catch (e) {
-      print('获取会话列表异常: $e');
+      info('获取会话列表异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
   }
@@ -174,7 +175,7 @@ class ConversationService {
         return ApiResponse.error(result.message ?? '搜索失败');
       }
     } catch (e) {
-      print('搜索会话异常: $e');
+      info('搜索会话异常: $e');
       return ApiResponse.error('搜索异常，请稍后重试');
     }
   }
@@ -199,14 +200,14 @@ class ConversationService {
       
       return ApiResponse.success(newConversation);
     } catch (e) {
-      print('创建会话异常: $e');
+      info('创建会话异常: $e');
       return ApiResponse.error('创建会话失败');
     }
   }
 
   /// 解析会话数据
   Conversation _parseConversationFromJson(Map<String, dynamic> json) {
-    print('🔍 解析会话数据: $json');
+    info('🔍 解析会话数据: $json');
     
     // 解析对方用户信息
     // 尝试多种可能的字段名来获取目标用户ID
@@ -228,9 +229,9 @@ class ConversationService {
     // 格式化时间戳
     String formattedTimestamp = _formatTimestamp(_parseTimestamp(lastMsgTime));
     
-    print('👤 对方信息: $targetUserName (ID: $targetUserId)');
-    print('💬 最后消息: $formattedLastMessage');
-    print('⏰ 时间: $formattedTimestamp');
+    info('👤 对方信息: $targetUserName (ID: $targetUserId)');
+    info('💬 最后消息: $formattedLastMessage');
+    info('⏰ 时间: $formattedTimestamp');
     
     return Conversation(
       name: targetUserName ?? '未知用户',

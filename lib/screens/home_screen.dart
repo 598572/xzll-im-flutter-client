@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
 import 'recent_conversations_screen.dart';
 import 'login_screen.dart';
 import 'friend_list_screen.dart';
 import 'user_search_screen.dart';
 import '../services/auth_service.dart';
 import '../services/websocket_service.dart';
-import '../models/friend.dart';
 
 // 主页屏幕，包含底部导航栏
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {

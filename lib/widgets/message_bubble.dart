@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/message.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
+import '../models/domain/chat_message.dart';
 import '../utils/time_utils.dart';
 
 // 消息气泡组件
@@ -8,10 +9,10 @@ class MessageBubble extends StatelessWidget {
   final bool isMe;
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     required this.isMe,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +102,7 @@ class MessageBubble extends StatelessWidget {
         break;
       case MessageStatus.serverReceived:
         // 消息已送达服务器：小圆点加载动画，灰色（发送中状态）
-        statusWidget = Container(
+        statusWidget = SizedBox(
           width: 12,
           height: 12,
           child: CircularProgressIndicator(

@@ -3,9 +3,12 @@ import 'dart:io';
 import "package:web_socket_channel/io.dart";
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:path_provider/path_provider.dart';
-import '../models/message.dart';
-import '../models/conversation.dart';
-import '../models/friend.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_type.dart';
+import '../models/domain/chat_message.dart';
+import '../models/domain/conversation.dart';
 import 'auth_service.dart';
 
 // WebSocket服务类
@@ -43,11 +46,11 @@ class WebSocketService {
     try {
       final directory = await getApplicationDocumentsDirectory();
       _cacheFilePath = '${directory.path}/msgIds_cache.json';
-      print("📁 消息ID缓存文件路径: $_cacheFilePath");
+      info("📁 消息ID缓存文件路径: $_cacheFilePath");
       // 启动时加载缓存
       await _loadMsgIdsFromCache();
     } catch (e) {
-      print("❌ 初始化缓存文件失败: $e");
+      info("❌ 初始化缓存文件失败: $e");
     }
   }
 
@@ -61,10 +64,10 @@ class WebSocketService {
         final content = await file.readAsString();
         final data = jsonDecode(content);
         _msgIds = List<String>.from(data['msgIds'] ?? []);
-        print("📂 从缓存加载了 ${_msgIds.length} 个消息ID");
+        info("📂 从缓存加载了 ${_msgIds.length} 个消息ID");
       }
     } catch (e) {
-      print("❌ 加载缓存失败: $e");
+      info("❌ 加载缓存失败: $e");
       _msgIds = [];
     }
   }
@@ -80,20 +83,20 @@ class WebSocketService {
         'lastUpdate': DateTime.now().millisecondsSinceEpoch,
       };
       await file.writeAsString(jsonEncode(data));
-      print("💾 已保存 ${_msgIds.length} 个消息ID到缓存");
+      info("💾 已保存 ${_msgIds.length} 个消息ID到缓存");
     } catch (e) {
-      print("❌ 保存缓存失败: $e");
+      info("❌ 保存缓存失败: $e");
     }
   }
 
   // 获取单个消息ID（优先从缓存获取）
   Future<String?> getSingleMsgId() async {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，尝试重新连接...");
+      info("❌ WebSocket未连接，尝试重新连接...");
       // 尝试重新连接
       bool reconnected = await _attemptReconnect();
       if (!reconnected) {
-        print("❌ 重新连接失败，无法获取消息ID");
+        info("❌ 重新连接失败，无法获取消息ID");
         return null;
       }
     }
@@ -101,25 +104,25 @@ class WebSocketService {
     // 如果缓存中有消息ID，直接返回
     if (_msgIds.isNotEmpty) {
       String msgId = _msgIds.removeAt(0);
-      print("🆔 从缓存获取消息ID: $msgId (剩余: ${_msgIds.length})");
+      info("🆔 从缓存获取消息ID: $msgId (剩余: ${_msgIds.length})");
       // 异步保存缓存
       _saveMsgIdsToCache();
       return msgId;
     }
 
     // 如果缓存为空，从服务器获取一批
-    print("🆔 缓存为空，从服务器获取消息ID...");
+    info("🆔 缓存为空，从服务器获取消息ID...");
     await _getMsgIdsFromServer();
     
     if (_msgIds.isNotEmpty) {
       String msgId = _msgIds.removeAt(0);
-      print("🆔 从服务器获取到消息ID: $msgId (剩余: ${_msgIds.length})");
+      info("🆔 从服务器获取到消息ID: $msgId (剩余: ${_msgIds.length})");
       // 异步保存缓存
       _saveMsgIdsToCache();
       return msgId;
     }
 
-    print("❌ 获取消息ID失败");
+    info("❌ 获取消息ID失败");
     return null;
   }
 
@@ -136,7 +139,7 @@ class WebSocketService {
     }
 
     _isGettingMsgIds = true;
-    print("🆔 请求从服务器获取消息ID...");
+    info("🆔 请求从服务器获取消息ID...");
     
     var request = {
       'url': 'xzll/im/c2c/get/batch/msgId',
@@ -146,25 +149,25 @@ class WebSocketService {
     };
 
     _channel?.sink.add(jsonEncode(request));
-    print("📤 发送获取消息ID请求: ${jsonEncode(request)}");
+    info("📤 发送获取消息ID请求: ${jsonEncode(request)}");
   }
 
   // 发送消息（使用指定的msgId）
   Future<bool> sendMessageWithId(String msgId, String content, String toUserId) async {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，尝试重新连接...");
+      info("❌ WebSocket未连接，尝试重新连接...");
       // 尝试重新连接
       bool reconnected = await _attemptReconnect();
       if (!reconnected) {
-        print("❌ 重新连接失败，无法发送消息");
+        info("❌ 重新连接失败，无法发送消息");
         return false;
       }
     }
 
-    print("📤 准备发送消息...");
-    print("📝 消息内容: $content");
-    print("👤 发送给: $toUserId");
-    print("�� 使用消息ID: $msgId");
+    info("📤 准备发送消息...");
+    info("📝 消息内容: $content");
+    info("👤 发送给: $toUserId");
+    info("�� 使用消息ID: $msgId");
     
     var request = {
       'url': 'xzll/im/c2c/send',
@@ -180,10 +183,10 @@ class WebSocketService {
 
     try {
       _channel!.sink.add(jsonEncode(request));
-      print("📤 发送消息成功: ${jsonEncode(request)}");
+      info("📤 发送消息成功: ${jsonEncode(request)}");
       return true;
     } catch (e) {
-      print("❌ 发送消息失败: $e");
+      info("❌ 发送消息失败: $e");
       return false;
     }
   }
@@ -191,11 +194,11 @@ class WebSocketService {
   // 请求会话列表
   void requestConversations() {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，无法获取会话列表");
+      info("❌ WebSocket未连接，无法获取会话列表");
       return;
     }
 
-    print("📋 请求会话列表...");
+    info("📋 请求会话列表...");
     var request = {
       'url': 'xzll/im/conversation/list',
       'body': {
@@ -206,7 +209,7 @@ class WebSocketService {
     };
 
     _channel?.sink.add(jsonEncode(request));
-    print("📤 发送会话列表请求: ${jsonEncode(request)}");
+    info("📤 发送会话列表请求: ${jsonEncode(request)}");
   }
 
   // 连接WebSocket
@@ -214,13 +217,13 @@ class WebSocketService {
     try {
       _currentUserId = userId;
 
-      print("🔗 开始连接WebSocket...");
-      print("📱 用户ID: $userId");
-      print("🔑 Token: $token");
+      info("🔗 开始连接WebSocket...");
+      info("📱 用户ID: $userId");
+      info("🔑 Token: $token");
 
       //url 添加userId参数支持nginx一致性哈希负载均衡
       final wsUrl = 'ws://120.46.85.43:80/websocket?userId=$userId';
-      print("🌐 WebSocket连接地址: $wsUrl");
+      info("🌐 WebSocket连接地址: $wsUrl");
 
       final headers = {
         'Connection': 'Upgrade',
@@ -229,7 +232,7 @@ class WebSocketService {
         'uid': userId,   // 用户ID，用于验证
       };
 
-      print("📋 WebSocket请求头: $headers");
+      info("📋 WebSocket请求头: $headers");
 
       _channel = IOWebSocketChannel.connect(
         Uri.parse(wsUrl),
@@ -239,23 +242,23 @@ class WebSocketService {
       _channel!.stream.listen(
         _handleMessage,
         onError: (error) {
-          print("❌ WebSocket连接错误: $error");
+          info("❌ WebSocket连接错误: $error");
           _isConnected = false;
         },
         onDone: () {
-          print("�� WebSocket连接关闭");
+          info("�� WebSocket连接关闭");
           _isConnected = false;
         },
       );
 
       _isConnected = true;
-      print("✅ WebSocket连接成功");
+      info("✅ WebSocket连接成功");
       // 连接成功后获取消息ID和会话列表
       _getMsgIds();
       requestConversations();
       return true;
     } catch (e) {
-      print("❌ WebSocket连接失败: $e");
+      info("❌ WebSocket连接失败: $e");
       _isConnected = false;
       return false;
     }
@@ -264,10 +267,10 @@ class WebSocketService {
   // 处理接收到的消息
   void _handleMessage(dynamic message) {
     try {
-      print("📨 收到原始消息: $message");
+      info("📨 收到原始消息: $message");
       var response = jsonDecode(message);
       String url = response['url'] ?? '';
-      print("🔗 消息URL: $url");
+      info("🔗 消息URL: $url");
 
       switch (url) {
         case 'xzll/im/c2c/send':
@@ -304,16 +307,16 @@ class WebSocketService {
           _handleFriendRequestHandlePush(response);
           break;
         default:
-          print("❓ 未知消息类型: $url");
+          info("❓ 未知消息类型: $url");
       }
     } catch (e) {
-      print("❌ 处理消息失败: $e");
+      info("❌ 处理消息失败: $e");
     }
   }
 
   // 处理会话列表响应
   void _handleConversationsResponse(Map<String, dynamic> response) {
-    print("📋 收到会话列表响应");
+    info("📋 收到会话列表响应");
     
     try {
       List<dynamic> conversationData = response['data'] ?? [];
@@ -321,26 +324,26 @@ class WebSocketService {
         return Conversation.fromJson(item);
       }).toList();
       
-      print("📋 解析到 ${conversations.length} 个会话");
+      info("📋 解析到 ${conversations.length} 个会话");
       
       // 通知UI更新
       if (onConversationsUpdated != null) {
         onConversationsUpdated!(conversations);
       }
     } catch (e) {
-      print("❌ 解析会话列表失败: $e");
+      info("❌ 解析会话列表失败: $e");
     }
   }
 
   // 处理会话更新响应
   void _handleConversationUpdateResponse(Map<String, dynamic> response) {
-    print("📋 收到会话更新响应");
+    info("📋 收到会话更新响应");
     
     try {
       var conversationData = response['data'];
       if (conversationData != null) {
         Conversation conversation = Conversation.fromJson(conversationData);
-        print("📋 会话更新: ${conversation.name}");
+        info("📋 会话更新: ${conversation.name}");
         
         // 通知UI更新单个会话
         if (onConversationUpdated != null) {
@@ -348,19 +351,19 @@ class WebSocketService {
         }
       }
     } catch (e) {
-      print("❌ 解析会话更新失败: $e");
+      info("❌ 解析会话更新失败: $e");
     }
   }
 
   // 处理好友申请推送
   void _handleFriendRequestPush(Map<String, dynamic> response) {
-    print("👥 收到好友申请推送");
+    info("👥 收到好友申请推送");
     
     try {
       var pushData = response['body'] ?? response['data'];
       if (pushData != null) {
         FriendRequestPushMessage pushMessage = FriendRequestPushMessage.fromJson(pushData);
-        print("👥 好友申请推送: ${pushMessage.pushContent}");
+        info("👥 好友申请推送: ${pushMessage.pushContent}");
         
         // 通知UI处理好友申请推送
         if (onFriendRequestPush != null) {
@@ -368,19 +371,19 @@ class WebSocketService {
         }
       }
     } catch (e) {
-      print("❌ 解析好友申请推送失败: $e");
+      info("❌ 解析好友申请推送失败: $e");
     }
   }
 
   // 处理好友申请处理结果推送
   void _handleFriendRequestHandlePush(Map<String, dynamic> response) {
-    print("👥 收到好友申请处理结果推送");
+    info("👥 收到好友申请处理结果推送");
     
     try {
       var pushData = response['body'] ?? response['data'];
       if (pushData != null) {
         FriendRequestPushMessage pushMessage = FriendRequestPushMessage.fromJson(pushData);
-        print("👥 好友申请处理结果: ${pushMessage.pushContent}");
+        info("👥 好友申请处理结果: ${pushMessage.pushContent}");
         
         // 通知UI处理好友申请处理结果推送
         if (onFriendRequestPush != null) {
@@ -388,7 +391,7 @@ class WebSocketService {
         }
       }
     } catch (e) {
-      print("❌ 解析好友申请处理结果推送失败: $e");
+      info("❌ 解析好友申请处理结果推送失败: $e");
     }
   }
 
@@ -405,7 +408,7 @@ class WebSocketService {
   // 处理C2C发送消息响应
   void _handleC2CSendResponse(Map<String, dynamic> response) {
     String msgId = _extractMsgId(response);
-    print("✅ 消息发送成功: $msgId");
+    info("✅ 消息发送成功: $msgId");
     
     // 更新消息状态为已发送
     if (onMessageStatusChanged != null) {
@@ -418,7 +421,7 @@ class WebSocketService {
 
   // 处理接收到的C2C消息
   void _handleC2CReceiveMessage(Map<String, dynamic> response) {
-    print("📨 收到新消息: $response");
+    info("📨 收到新消息: $response");
     
     try {
       // 解析消息内容
@@ -429,7 +432,7 @@ class WebSocketService {
       int msgFormat = response['msgFormat'] ?? 0;
       int msgCreateTime = response['msgCreateTime'] ?? DateTime.now().millisecondsSinceEpoch;
       
-      print("📨 消息详情: ID=$msgId, 来自=$fromUserId, 内容=$msgContent");
+      info("📨 消息详情: ID=$msgId, 来自=$fromUserId, 内容=$msgContent");
       
       // 创建ChatMessage对象
       ChatMessage message = ChatMessage(
@@ -437,7 +440,7 @@ class WebSocketService {
         content: msgContent,
         fromUserId: fromUserId,
         toUserId: toUserId,
-        type: MessageType.fromCode(msgFormat) ?? MessageType.textMsg,
+        type: MessageType.fromCode(msgFormat),
         status: MessageStatus.unRead,
         timestamp: DateTime.fromMillisecondsSinceEpoch(msgCreateTime),
       );
@@ -454,7 +457,7 @@ class WebSocketService {
       _sendReceivedAck(msgId, fromUserId, toUserId);
       
     } catch (e) {
-      print("❌ 处理接收消息失败: $e");
+      info("❌ 处理接收消息失败: $e");
     }
   }
 
@@ -469,11 +472,11 @@ class WebSocketService {
     // 获取当前用户ID（接收方）
     String currentUserId = _currentUserId ?? '';
     
-    print("🔍 ACK调试信息:");
-    print("  📨 原始消息发送方: $originalFromUserId");
-    print("  📨 原始消息接收方: $originalToUserId");
-    print("  👤 当前用户ID: $currentUserId");
-    print("  🆔 消息ID: $msgId");
+    info("🔍 ACK调试信息:");
+    info("  📨 原始消息发送方: $originalFromUserId");
+    info("  📨 原始消息接收方: $originalToUserId");
+    info("  👤 当前用户ID: $currentUserId");
+    info("  🆔 消息ID: $msgId");
     
     // 延迟发送未读确认
     Future.delayed(Duration(seconds: 1), () {
@@ -488,7 +491,7 @@ class WebSocketService {
       };
       
       _channel?.sink.add(jsonEncode(receivedAckRequest));
-      print("📤 发送未读确认完成: ${jsonEncode(receivedAckRequest)}");
+      info("📤 发送未读确认完成: ${jsonEncode(receivedAckRequest)}");
       
       // 延迟发送已读确认
       Future.delayed(Duration(seconds: 2), () {
@@ -503,7 +506,7 @@ class WebSocketService {
         };
         
         _channel?.sink.add(jsonEncode(readAckRequest));
-        print("📤 发送已读确认完成: ${jsonEncode(readAckRequest)}");
+        info("📤 发送已读确认完成: ${jsonEncode(readAckRequest)}");
         
         // 更新消息状态为已读
         if (onMessageStatusChanged != null) {
@@ -518,8 +521,8 @@ class WebSocketService {
     List<dynamic> msgIds = response['msgIds'] ?? [];
     _msgIds.addAll(msgIds.cast<String>());
     _isGettingMsgIds = false;
-    print("🆔 获取到消息ID: ${msgIds.length}个");
-    print("📋 消息ID列表: $msgIds");
+    info("🆔 获取到消息ID: ${msgIds.length}个");
+    info("📋 消息ID列表: $msgIds");
     // 保存到缓存
     _saveMsgIdsToCache();
   }
@@ -527,7 +530,7 @@ class WebSocketService {
   // 处理接收确认响应
   void _handleReceivedAckResponse(Map<String, dynamic> response) {
     String msgId = _extractMsgId(response);
-    print("📥 消息接收确认: $msgId");
+    info("📥 消息接收确认: $msgId");
     
     // 更新消息状态为已送达
     if (onMessageStatusChanged != null) {
@@ -538,7 +541,7 @@ class WebSocketService {
   // 处理未读确认响应
   void _handleUnreadAckResponse(Map<String, dynamic> response) {
     String msgId = _extractMsgId(response);
-    print("📥 消息未读确认: $msgId");
+    info("📥 消息未读确认: $msgId");
     
     // 更新消息状态为未读
     if (onMessageStatusChanged != null) {
@@ -549,7 +552,7 @@ class WebSocketService {
   // 处理已读确认响应
   void _handleReadAckResponse(Map<String, dynamic> response) {
     String msgId = _extractMsgId(response);
-    print("👁️ 消息已读确认: $msgId");
+    info("👁️ 消息已读确认: $msgId");
     
     // 更新消息状态为已读
     if (onMessageStatusChanged != null) {
@@ -560,14 +563,14 @@ class WebSocketService {
   // 处理撤回消息响应
   void _handleWithdrawResponse(Map<String, dynamic> response) {
     String msgId = _extractMsgId(response);
-    print("🗑️ 消息撤回: $msgId");
+    info("🗑️ 消息撤回: $msgId");
   }
 
   // 获取消息ID
   void _getMsgIds() {
     if (_isGettingMsgIds || _msgIds.isNotEmpty) return;
 
-    print("🆔 请求获取消息ID...");
+    info("🆔 请求获取消息ID...");
     _isGettingMsgIds = true;
     var request = {
       'url': 'xzll/im/c2c/get/batch/msgId',
@@ -577,28 +580,28 @@ class WebSocketService {
     };
 
     _channel?.sink.add(jsonEncode(request));
-    print("📤 发送获取消息ID请求: ${jsonEncode(request)}");
+    info("📤 发送获取消息ID请求: ${jsonEncode(request)}");
   }
 
   // 发送消息
   Future<bool> sendMessage(String content, String toUserId) async {
     if (!_isConnected || _channel == null) {
-      print("❌ WebSocket未连接，尝试重新连接...");
+      info("❌ WebSocket未连接，尝试重新连接...");
       // 尝试重新连接
       bool reconnected = await _attemptReconnect();
       if (!reconnected) {
-        print("❌ 重新连接失败，无法发送消息");
+        info("❌ 重新连接失败，无法发送消息");
         return false;
       }
     }
 
-    print("📤 准备发送消息...");
-    print("📝 消息内容: $content");
-    print("👤 发送给: $toUserId");
+    info("📤 准备发送消息...");
+    info("📝 消息内容: $content");
+    info("👤 发送给: $toUserId");
 
     // 如果没有消息ID，先获取
     if (_msgIds.isEmpty) {
-      print("🆔 消息ID为空，先获取消息ID...");
+      info("🆔 消息ID为空，先获取消息ID...");
       _getMsgIds();
       // 等待获取消息ID
       int attempts = 0;
@@ -607,13 +610,13 @@ class WebSocketService {
         attempts++;
       }
       if (_msgIds.isEmpty) {
-        print("❌ 获取消息ID失败");
+        info("❌ 获取消息ID失败");
         return false;
       }
     }
 
     String msgId = _msgIds.removeAt(0);
-    print("🆔 使用消息ID: $msgId");
+    info("🆔 使用消息ID: $msgId");
     
     var request = {
       'url': 'xzll/im/c2c/send',
@@ -629,17 +632,17 @@ class WebSocketService {
 
     try {
       _channel!.sink.add(jsonEncode(request));
-      print("📤 发送消息成功: ${jsonEncode(request)}");
+      info("📤 发送消息成功: ${jsonEncode(request)}");
       return true;
     } catch (e) {
-      print("❌ 发送消息失败: $e");
+      info("❌ 发送消息失败: $e");
       return false;
     }
   }
 
   // 更新会话列表（收到新消息时）
   void _updateConversationOnNewMessage(ChatMessage message) {
-    print("📋 更新会话列表 - 收到新消息");
+    info("📋 更新会话列表 - 收到新消息");
     
     // 创建或更新会话
     Conversation updatedConversation = Conversation(
@@ -703,7 +706,7 @@ class WebSocketService {
 
   // 发送接收确认
   void sendReceivedAck(String msgId, String fromUserId, String toUserId) {
-    print("📥 发送接收确认...");
+    info("📥 发送接收确认...");
     var request = {
       'url': 'xzll/im/c2c/receivedAck',
       'body': {
@@ -714,7 +717,7 @@ class WebSocketService {
       },
     };
     _channel?.sink.add(jsonEncode(request));
-    print("📥 发送接收确认完成: ${jsonEncode(request)}");
+    info("📥 发送接收确认完成: ${jsonEncode(request)}");
   }
 
   // 内部发送接收确认方法
@@ -724,7 +727,7 @@ class WebSocketService {
 
   // 发送已读确认
   void sendReadAck(String msgId, String fromUserId, String toUserId) {
-    print("👁️ 发送已读确认...");
+    info("👁️ 发送已读确认...");
     var request = {
       'url': 'xzll/im/c2c/toUserReadAck',
       'body': {
@@ -735,12 +738,12 @@ class WebSocketService {
       },
     };
     _channel?.sink.add(jsonEncode(request));
-    print("👁️ 发送已读确认完成: ${jsonEncode(request)}");
+    info("👁️ 发送已读确认完成: ${jsonEncode(request)}");
   }
 
   // 撤回消息
   void withdrawMessage(String msgId, String fromUserId, String toUserId) {
-    print("🗑️ 撤回消息...");
+    info("🗑️ 撤回消息...");
     var request = {
       'url': 'xzll/im/c2c/withdraw',
       'body': {
@@ -751,22 +754,22 @@ class WebSocketService {
       },
     };
     _channel?.sink.add(jsonEncode(request));
-    print("🗑️ 撤回消息完成: ${jsonEncode(request)}");
+    info("🗑️ 撤回消息完成: ${jsonEncode(request)}");
   }
 
   // 尝试重新连接
   Future<bool> _attemptReconnect() async {
     if (_currentUserId == null) {
-      print("❌ 无法重连：用户ID为空");
+      info("❌ 无法重连：用户ID为空");
       return false;
     }
 
-    print("🔄 尝试重新连接WebSocket...");
+    info("🔄 尝试重新连接WebSocket...");
     
     // 从AuthService获取最新的token
     final authService = AuthService();
     if (!authService.isLoggedIn || authService.currentUser == null) {
-      print("❌ 无法重连：用户未登录");
+      info("❌ 无法重连：用户未登录");
       return false;
     }
 
@@ -786,7 +789,7 @@ class WebSocketService {
 
   // 断开连接
   void disconnect() {
-    print("🔌 断开WebSocket连接");
+    info("🔌 断开WebSocket连接");
     _channel?.sink.close();
     _isConnected = false;
   }

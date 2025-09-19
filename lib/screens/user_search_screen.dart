@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/friend.dart';
-import '../models/user.dart';
-import '../models/conversation.dart';
+import 'package:xzll_im_flutter_client/models/domain/user_search_result.dart';
+import 'package:xzll_im_flutter_client/models/request/friend_request_send_request.dart';
+import '../models/domain/conversation.dart';
 import '../services/friend_service.dart';
 import '../services/auth_service.dart';
 import 'chat_screen.dart';

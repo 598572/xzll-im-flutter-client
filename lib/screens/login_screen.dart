@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import 'package:xzll_im_flutter_client/models/enum/divice_type.dart';
+import 'package:xzll_im_flutter_client/models/request/login_request.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {

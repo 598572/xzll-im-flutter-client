@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../models/message.dart';
-import '../models/conversation.dart';
+import 'package:xzll_im_flutter_client/constant/constant.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+import '../models/domain/chat_message.dart';
+import '../models/domain/conversation.dart';
 import '../services/websocket_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/message_bubble.dart';
@@ -11,10 +13,10 @@ import '../widgets/message_bubble.dart';
 class ChatScreen extends StatefulWidget {
   final Conversation conversation;
 
-  ChatScreen({required this.conversation});
+  const ChatScreen({super.key, required this.conversation});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  State createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
@@ -43,26 +45,26 @@ class _ChatScreenState extends State<ChatScreen> {
     // 从认证服务获取真实的用户信息
     final authService = AuthService();
     if (!authService.isLoggedIn || authService.currentUser == null) {
-      print('❌ 用户未登录，无法连接WebSocket');
+      info('❌ 用户未登录，无法连接WebSocket');
       return;
     }
 
-    print("🔗 开始连接WebSocket...");
+    info("🔗 开始连接WebSocket...");
     bool connected = await WebSocketService.instance.connect(
-      authService.currentUser!.id, 
-      authService.accessToken ?? ''
+      authService.currentUser!.id,
+      authService.accessToken ?? '',
     );
     if (connected) {
-      print('✅ WebSocket连接成功');
+      info('✅ WebSocket连接成功');
     } else {
-      print('❌ WebSocket连接失败');
+      info('❌ WebSocket连接失败');
     }
   }
 
   void _setupMessageStatusListener() {
     // 监听消息状态变化
     WebSocketService.instance.onMessageStatusChanged = (String msgId, MessageStatus status) {
-      print("📊 消息状态更新: $msgId -> $status");
+      info("📊 消息状态更新: $msgId -> $status");
       // 检查Widget是否还在树中
       if (mounted) {
         setState(() {
@@ -81,13 +83,13 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         });
       } else {
-        print("⚠️ Widget已销毁，跳过setState调用");
+        info("⚠️ Widget已销毁，跳过setState调用");
       }
     };
 
     // 监听接收到的消息
     WebSocketService.instance.onMessageReceived = (ChatMessage message) {
-      print("📨 收到新消息: ${message.content}");
+      info("📨 收到新消息: ${message.content}");
       // 检查Widget是否还在树中
       if (mounted) {
         setState(() {
@@ -96,7 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
         // 滚动到底部显示新消息
         _scrollToBottom();
       } else {
-        print("⚠️ Widget已销毁，跳过接收消息处理");
+        info("⚠️ Widget已销毁，跳过接收消息处理");
       }
     };
   }
@@ -104,41 +106,41 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage(String content) async {
     if (content.trim().isEmpty) return;
 
-    print("📤 准备发送消息: $content");
+    info("📤 准备发送消息: $content");
 
     // 先获取真实的消息ID（优先从缓存获取）
     String? msgId = await WebSocketService.instance.getSingleMsgId();
     if (msgId == null) {
-      print("❌ 获取消息ID失败，无法发送消息");
+      info("❌ 获取消息ID失败，无法发送消息");
       return;
     }
 
-    print("🆔 获取到消息ID: $msgId");
-    
+    info("🆔 获取到消息ID: $msgId");
+
     // 获取当前用户ID
     final authService = AuthService();
     final currentUserId = authService.currentUser?.id ?? '';
-    
+
     // 获取目标用户ID（优先使用targetUserId，如果没有则使用userId）
     String targetUserId = widget.conversation.targetUserId ?? widget.conversation.userId;
-    
-    print("🔍 发送消息调试信息:");
-    print("  📱 当前用户ID: $currentUserId");
-    print("  🎯 目标用户ID: $targetUserId");
-    print("  💬 会话userId: ${widget.conversation.userId}");
-    print("  👤 会话targetUserId: ${widget.conversation.targetUserId}");
-    
+
+    info("🔍 发送消息调试信息:");
+    info("  📱 当前用户ID: $currentUserId");
+    info("  🎯 目标用户ID: $targetUserId");
+    info("  💬 会话userId: ${widget.conversation.userId}");
+    info("  👤 会话targetUserId: ${widget.conversation.targetUserId}");
+
     // 创建消息（使用真实的消息ID和发送中状态）
     ChatMessage message = ChatMessage(
       msgId: msgId,
       content: content,
       fromUserId: currentUserId,
       toUserId: targetUserId,
-      type: MessageType.textMsg,
+      type: MessageType.text,
       status: MessageStatus.serverReceived, // 使用serverReceived作为发送中状态
       timestamp: DateTime.now(),
     );
-    
+
     if (mounted) {
       setState(() {
         messages.add(message);
@@ -146,14 +148,10 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     // 发送到服务器
-    bool success = await WebSocketService.instance.sendMessageWithId(
-      msgId,
-      content,
-      targetUserId,
-    );
+    bool success = await WebSocketService.instance.sendMessageWithId(msgId, content, targetUserId);
 
     if (!success) {
-      print("❌ 发送消息失败，更新消息状态为失败");
+      info("❌ 发送消息失败，更新消息状态为失败");
       // 更新消息状态为失败
       if (mounted) {
         setState(() {
@@ -173,7 +171,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       }
     } else {
-      print("✅ 消息发送成功，等待服务器确认");
+      info("✅ 消息发送成功，等待服务器确认");
     }
 
     // 滚动到底部
@@ -198,10 +196,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
-              backgroundImage: AssetImage(widget.conversation.headImage),
-              radius: 16,
-            ),
+            CircleAvatar(backgroundImage: AssetImage(widget.conversation.headImage), radius: 16),
             SizedBox(width: 8),
             Text(widget.conversation.name),
           ],
@@ -237,9 +232,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              border: Border(
-                top: BorderSide(color: Colors.grey[300]!),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey[300]!)),
             ),
             child: Row(
               children: [
@@ -260,10 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                     maxLines: null,
                     textInputAction: TextInputAction.send,
@@ -297,11 +287,11 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.dispose();
     _scrollController.dispose();
     _recorder?.closeRecorder();
-    
+
     // 清理WebSocket回调，避免内存泄漏
     WebSocketService.instance.onMessageStatusChanged = null;
     WebSocketService.instance.onMessageReceived = null;
-    
+
     super.dispose();
   }
 }
