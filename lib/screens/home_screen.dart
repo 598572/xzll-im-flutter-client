@@ -1,11 +1,13 @@
+/*
 import 'package:flutter/material.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
-import 'recent_conversations_screen.dart';
-import 'login_screen.dart';
-import 'friend_list_screen.dart';
-import 'user_search_screen.dart';
+
 import '../services/auth_service.dart';
 import '../services/websocket_service.dart';
+import 'friend_list_screen.dart';
+import 'login_screen.dart';
+import 'recent_conversations_screen.dart';
+import 'user_search_screen.dart';
 
 // 主页屏幕，包含底部导航栏
 class HomeScreen extends StatefulWidget {
@@ -62,8 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       pushMessage.pushTitle ?? '好友通知',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    if (pushMessage.pushContent != null)
-                      Text(pushMessage.pushContent!),
+                    if (pushMessage.pushContent != null) Text(pushMessage.pushContent!),
                   ],
                 ),
               ),
@@ -92,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
   // 构建发现页面
   Widget _buildDiscoverScreen() {
     return const Center(
@@ -110,13 +110,13 @@ class _HomeScreenState extends State<HomeScreen> {
   // 构建个人资料页面
   Widget _buildProfileScreen() {
     final user = _authService.currentUser;
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           const SizedBox(height: 20),
-          
+
           // 用户头像和基本信息
           Container(
             padding: const EdgeInsets.all(20),
@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       : Icon(Icons.person, size: 40, color: Colors.purple),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // 用户信息
                 Expanded(
                   child: Column(
@@ -151,40 +151,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         user?.userName ?? '用户',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '用户ID: ${user?.id ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       if (user?.phone != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           '手机: ${user!.phone}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                         ),
                       ],
                     ],
                   ),
                 ),
-                
+
                 // 编辑按钮
                 IconButton(
                   onPressed: () {
                     // TODO: 实现个人信息编辑
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('个人信息编辑功能开发中...')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('个人信息编辑功能开发中...')));
                   },
                   icon: const Icon(Icons.edit_outlined),
                   color: Colors.purple,
@@ -192,14 +183,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // 功能列表
           _buildMenuSection(),
-          
+
           const SizedBox(height: 24),
-          
+
           // 设置和登出
           _buildSettingsSection(),
         ],
@@ -228,9 +219,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.person_outline,
             title: '个人信息',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('个人信息功能开发中...')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('个人信息功能开发中...')));
             },
           ),
           _buildDivider(),
@@ -238,9 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.photo_library_outlined,
             title: '我的相册',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('相册功能开发中...')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('相册功能开发中...')));
             },
           ),
           _buildDivider(),
@@ -248,9 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.favorite_outline,
             title: '收藏',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('收藏功能开发中...')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('收藏功能开发中...')));
             },
           ),
         ],
@@ -279,9 +270,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.settings_outlined,
             title: '设置',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('设置功能开发中...')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('设置功能开发中...')));
             },
           ),
           _buildDivider(),
@@ -289,9 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.help_outline,
             title: '帮助与反馈',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('帮助功能开发中...')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('帮助功能开发中...')));
             },
           ),
           _buildDivider(),
@@ -315,13 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return ListTile(
       leading: Icon(icon, color: textColor ?? Colors.grey[700]),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          color: textColor ?? Colors.black87,
-        ),
-      ),
+      title: Text(title, style: TextStyle(fontSize: 16, color: textColor ?? Colors.black87)),
       trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
       onTap: onTap,
     );
@@ -329,12 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 构建分割线
   Widget _buildDivider() {
-    return Divider(
-      height: 1,
-      color: Colors.grey[200],
-      indent: 16,
-      endIndent: 16,
-    );
+    return Divider(height: 1, color: Colors.grey[200], indent: 16, endIndent: 16);
   }
 
   // 处理登出
@@ -346,10 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('确认退出'),
         content: const Text('确定要退出登录吗？'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('确定', style: TextStyle(color: Colors.red)),
@@ -362,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         // 执行登出
         await _authService.logout();
-        
+
         if (mounted) {
           // 跳转到登录页面
           Navigator.of(context).pushAndRemoveUntil(
@@ -372,12 +349,9 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('退出登录失败: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('退出登录失败: $e'), backgroundColor: Colors.red));
         }
       }
     }
@@ -390,66 +364,51 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(_getAppBarTitle()),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
-        actions: _selectedIndex == 0 ? [
-          // 聊天页面显示搜索按钮
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('搜索功能开发中...')),
-              );
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.add),
-            onSelected: (value) {
-              switch (value) {
-                case 'new_chat':
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('发起聊天功能开发中...')),
-                  );
-                  break;
-                case 'add_friend':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const UserSearchScreen()),
-                  );
-                  break;
-                case 'scan_qr':
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('扫码功能开发中...')),
-                  );
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'new_chat', child: Text('发起聊天')),
-              const PopupMenuItem(value: 'add_friend', child: Text('添加朋友')),
-              const PopupMenuItem(value: 'scan_qr', child: Text('扫一扫')),
-            ],
-          ),
-        ] : null,
+        actions: _selectedIndex == 0
+            ? [
+                // 聊天页面显示搜索按钮
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('搜索功能开发中...')));
+                  },
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.add),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'new_chat':
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(const SnackBar(content: Text('发起聊天功能开发中...')));
+                        break;
+                      case 'add_friend':
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const UserSearchScreen()),
+                        );
+                        break;
+                      case 'scan_qr':
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(const SnackBar(content: Text('扫码功能开发中...')));
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'new_chat', child: Text('发起聊天')),
+                    const PopupMenuItem(value: 'add_friend', child: Text('添加朋友')),
+                    const PopupMenuItem(value: 'scan_qr', child: Text('扫一扫')),
+                  ],
+                ),
+              ]
+            : null,
       ),
       body: _widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.message),
-            label: '聊天',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.contacts),
-            label: '通讯录',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore),
-            label: '发现',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '我',
-          ),
-        ],
+        items: const <BottomNavigationBarItem>[],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.purple,
         unselectedItemColor: Colors.grey,
@@ -474,3 +433,4 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 }
+*/

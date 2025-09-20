@@ -1,14 +1,17 @@
 import 'package:get/get.dart';
-import 'package:xzll_im_flutter_client/services/auth_service.dart';
-import 'package:xzll_im_flutter_client/utils/auth_tools.dart';
-import 'package:xzll_im_flutter_client/router/router_name.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import 'package:xzll_im_flutter_client/router/router_name.dart';
+import 'package:xzll_im_flutter_client/services/auth_service.dart';
+import 'package:xzll_im_flutter_client/services/connectivity_services.dart';
+import 'package:xzll_im_flutter_client/services/websocket_service.dart';
+import 'package:xzll_im_flutter_client/utils/auth_tools.dart';
 
 class SplashLogic extends GetxController {
   @override
   void onInit() {
     super.onInit();
     _checkAuthStatus();
+    initServices();
   }
 
   Future<void> _checkAuthStatus() async {
@@ -62,5 +65,10 @@ class SplashLogic extends GetxController {
       await AuthTools.clearAuthState();
       Get.offAllNamed(RouterName.login);
     }
+  }
+
+  void initServices() {
+    Get.put(ConnectivityServices());
+    Get.lazyPut(() => WebSocketService());
   }
 }

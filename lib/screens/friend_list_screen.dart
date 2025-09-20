@@ -1,3 +1,4 @@
+/*
 import 'package:flutter/material.dart';
 import 'package:xzll_im_flutter_client/constant/constant.dart';
 import 'package:xzll_im_flutter_client/models/request/friend_list_request.dart';
@@ -600,3 +601,4 @@ class _FriendListScreenState extends State<FriendListScreen> {
     );
   }
 }
+*/

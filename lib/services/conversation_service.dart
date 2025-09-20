@@ -1,28 +1,13 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:xzll_im_flutter_client/constant/custom_log.dart';
-import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
-import '../models/domain/conversation.dart';
-import '../services/auth_service.dart';
-
 // 会话列表请求模型
 class ConversationListRequest {
   final String userId;
   final int currentPage;
   final int pageSize;
 
-  ConversationListRequest({
-    required this.userId,
-    this.currentPage = 1,
-    this.pageSize = 20,
-  });
+  ConversationListRequest({required this.userId, this.currentPage = 1, this.pageSize = 20});
 
   Map<String, dynamic> toJson() {
-    return {
-      'userId': userId,
-      'currentPage': currentPage,
-      'pageSize': pageSize,
-    };
+    return {'userId': userId, 'currentPage': currentPage, 'pageSize': pageSize};
   }
 }
 
@@ -42,11 +27,16 @@ class PageResponse<T> {
     required this.hasNext,
   });
 
-  factory PageResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic>) fromJsonT) {
+  factory PageResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(Map<String, dynamic>) fromJsonT,
+  ) {
     return PageResponse<T>(
-      records: (json['records'] as List<dynamic>?)
-          ?.map((item) => fromJsonT(item as Map<String, dynamic>))
-          .toList() ?? [],
+      records:
+          (json['records'] as List<dynamic>?)
+              ?.map((item) => fromJsonT(item as Map<String, dynamic>))
+              .toList() ??
+          [],
       total: json['total'] ?? 0,
       currentPage: json['currentPage'] ?? 1,
       pageSize: json['pageSize'] ?? 20,
@@ -55,6 +45,7 @@ class PageResponse<T> {
   }
 }
 
+/*
 class ConversationService {
   // 单例模式
   static final ConversationService _instance = ConversationService._internal();
@@ -387,3 +378,4 @@ class ConversationService {
     }
   }
 }
+*/

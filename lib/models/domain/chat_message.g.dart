@@ -13,16 +13,22 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => ChatMessage(
   toUserId: json['toUserId'] as String,
   type: $enumDecode(_$MessageTypeEnumMap, json['type']),
   status:
-      $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ?? MessageStatus.serverReceived,
+      $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ??
+      MessageStatus.serverReceived,
   timestamp: json['timestamp'] == null
       ? DateTime.timestamp()
       : DateTime.parse(json['timestamp'] as String),
   withdrawStatus:
-      $enumDecodeNullable(_$MessageWithdrawStatusEnumMap, json['withdrawStatus']) ??
+      $enumDecodeNullable(
+        _$MessageWithdrawStatusEnumMap,
+        json['withdrawStatus'],
+      ) ??
       MessageWithdrawStatus.no,
 );
 
-Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) => <String, dynamic>{
+Map<String, dynamic> _$ChatMessageToJson(
+  ChatMessage instance,
+) => <String, dynamic>{
   'msgId': instance.msgId,
   'content': instance.content,
   'fromUserId': instance.fromUserId,
@@ -34,21 +40,24 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) => <String, dynam
 };
 
 const _$MessageTypeEnumMap = {
-  MessageType.unknown: 'unknown',
-  MessageType.text: 'text',
-  MessageType.voice: 'voice',
-  MessageType.location: 'location',
+  MessageType.unknown: 6,
+  MessageType.text: 0,
+  MessageType.image: 1,
+  MessageType.voice: 2,
+  MessageType.video: 3,
+  MessageType.file: 4,
+  MessageType.location: 5,
 };
 
 const _$MessageStatusEnumMap = {
-  MessageStatus.fail: 'fail',
-  MessageStatus.serverReceived: 'serverReceived',
-  MessageStatus.offLine: 'offLine',
-  MessageStatus.unRead: 'unRead',
-  MessageStatus.readed: 'readed',
+  MessageStatus.fail: -1,
+  MessageStatus.serverReceived: 1,
+  MessageStatus.offLine: 2,
+  MessageStatus.unRead: 3,
+  MessageStatus.readed: 4,
 };
 
 const _$MessageWithdrawStatusEnumMap = {
-  MessageWithdrawStatus.no: 'no',
-  MessageWithdrawStatus.yes: 'yes',
+  MessageWithdrawStatus.no: 0,
+  MessageWithdrawStatus.yes: 1,
 };

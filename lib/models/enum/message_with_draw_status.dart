@@ -1,4 +1,8 @@
-// 消息撤回状态枚举 - 与Java MsgWithdrawStatus保持一致
+// 消息撤回状态枚举
+
+import 'package:json_annotation/json_annotation.dart';
+
+@JsonEnum(valueField: "code")
 enum MessageWithdrawStatus {
   no(0, "未撤回"),
   yes(1, "已撤回");

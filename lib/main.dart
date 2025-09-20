@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:xzll_im_flutter_client/constant/custom_log.dart';
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'services/auth_service.dart';
+import 'package:xzll_im_flutter_client/constant/app_theme.dart';
+import 'package:xzll_im_flutter_client/router/router_name.dart';
+import 'package:xzll_im_flutter_client/router/router_pages.dart';
 
 // 应用程序入口
-void main() => runApp(const XzllImClient());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  runApp(const XzllImClient());
+}
 
 class XzllImClient extends StatelessWidget {
   const XzllImClient({super.key});
@@ -15,12 +19,12 @@ class XzllImClient extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: '蝎聊',
-      theme: ThemeData(
-        primarySwatch: Colors.purple,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple, brightness: Brightness.light),
-        useMaterial3: true,
-      ),
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
+      theme: AppTheme.light.copyWith(primaryColor: Colors.purple),
+      darkTheme: AppTheme.dark.copyWith(primaryColor: Colors.purple),
+      getPages: RouterPages.pages,
+      initialRoute: RouterName.splash,
     );
   }
 }

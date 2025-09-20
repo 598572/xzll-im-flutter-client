@@ -10,4 +10,7 @@ sealed class RouterName {
 
   ///首页
   static const String home = '/home';
+
+  ///私聊
+  static const String chat = '/chat';
 }

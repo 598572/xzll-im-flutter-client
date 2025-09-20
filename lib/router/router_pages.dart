@@ -1,6 +1,9 @@
 import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
-import 'package:xzll_im_flutter_client/screens/home_screen.dart';
+import 'package:xzll_im_flutter_client/screens/chat/chat_binding.dart';
+import 'package:xzll_im_flutter_client/screens/chat/chat_view.dart';
+import 'package:xzll_im_flutter_client/screens/home/home_binding.dart';
+import 'package:xzll_im_flutter_client/screens/home/home_page.dart';
 import 'package:xzll_im_flutter_client/screens/login_screen.dart';
 import 'package:xzll_im_flutter_client/screens/register_screen.dart';
 import 'package:xzll_im_flutter_client/screens/splash/splash_binding.dart';
@@ -11,6 +14,7 @@ sealed class RouterPages {
     GetPage(name: RouterName.splash, page: () => const SplashPage(), binding: SplashBinding()),
     GetPage(name: RouterName.login, page: () => LoginScreen()),
     GetPage(name: RouterName.register, page: () => RegisterScreen()),
-    GetPage(name: RouterName.home, page: () => HomeScreen()),
+    GetPage(name: RouterName.home, page: () => HomePage(), binding: HomeBinding()),
+    GetPage(name: RouterName.chat, page: () => ChatView(), binding: ChatBinding()),
   ];
 }

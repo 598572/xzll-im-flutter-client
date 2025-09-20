@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/models/enum/divice_type.dart';
 import 'package:xzll_im_flutter_client/models/request/login_request.dart';
+import 'package:xzll_im_flutter_client/router/router_name.dart';
+
 import '../services/auth_service.dart';
-import 'home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -59,17 +61,12 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => HomeScreen()),
-          );
+
+          Get.toNamed(RouterName.home);
         } else {
           // 登录失败，显示错误信息
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.message ?? '登录失败'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(result.message ?? '登录失败'), backgroundColor: Colors.red),
           );
         }
       }
@@ -78,21 +75,16 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _isLoading = false;
         });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('网络异常，请稍后重试'),
-            backgroundColor: Colors.red,
-          ),
-        );
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('网络异常，请稍后重试'), backgroundColor: Colors.red));
       }
     }
   }
 
   void _navigateToRegister() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => RegisterScreen()),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (context) => RegisterScreen()));
   }
 
   @override
@@ -108,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
-                
+
                 // Logo区域
                 Center(
                   child: Column(
@@ -120,11 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Colors.purple,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(
-                          Icons.chat_bubble_outline,
-                          size: 50,
-                          color: Colors.white,
-                        ),
+                        child: const Icon(Icons.chat_bubble_outline, size: 50, color: Colors.white),
                       ),
                       const SizedBox(height: 16),
                       const Text(
@@ -136,28 +124,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        '连接你我，畅享沟通',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                      Text('连接你我，畅享沟通', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 60),
-                
+
                 // 用户名输入框
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
                     labelText: '用户名',
                     prefixIcon: const Icon(Icons.person_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey[300]!),
@@ -175,9 +155,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   textInputAction: TextInputAction.next,
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // 密码输入框
                 TextFormField(
                   controller: _passwordController,
@@ -186,18 +166,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: '密码',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      ),
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
                         });
                       },
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey[300]!),
@@ -219,9 +195,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _handleLogin(),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // 登录按钮
                 SizedBox(
                   height: 50,
@@ -230,9 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.purple,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 2,
                     ),
                     child: _isLoading
@@ -250,26 +224,23 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // 分割线
                 Row(
                   children: [
                     Expanded(child: Divider(color: Colors.grey[300])),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        '或',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
+                      child: Text('或', style: TextStyle(color: Colors.grey[600])),
                     ),
                     Expanded(child: Divider(color: Colors.grey[300])),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // 注册按钮
                 SizedBox(
                   height: 50,
@@ -278,9 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.purple,
                       side: const BorderSide(color: Colors.purple),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: const Text(
                       '注册新账号',
@@ -288,20 +257,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 40),
-                
+
                 // 底部信息
                 Center(
                   child: Column(
                     children: [
-                      Text(
-                        '登录即表示同意',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                      Text('登录即表示同意', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -318,13 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          Text(
-                            ' 和 ',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
+                          Text(' 和 ', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                           GestureDetector(
                             onTap: () {
                               // 显示隐私政策

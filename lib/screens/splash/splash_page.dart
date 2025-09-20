@@ -7,6 +7,7 @@ class SplashPage extends GetView<SplashLogic> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("${controller.hashCode}");
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(

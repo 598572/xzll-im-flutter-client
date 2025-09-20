@@ -1,9 +1,9 @@
-// 消息模型
 import 'package:json_annotation/json_annotation.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
 
 part 'chat_message.g.dart';
 
+/// 消息模型
 @JsonSerializable()
 class ChatMessage {
   final String msgId;

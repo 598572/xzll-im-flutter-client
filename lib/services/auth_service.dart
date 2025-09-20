@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/auth_response.dart';
@@ -13,7 +15,7 @@ import 'package:xzll_im_flutter_client/utils/auth_tools.dart';
 /// 1. 协调仓库请求与本地缓存
 /// 2. 维护内存中的当前登录状态
 /// 3. 对外提供简化的登录/刷新/登出/校验 API
-class AuthService  {
+class AuthService {
   // 单例
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -35,7 +37,12 @@ class AuthService  {
   int get deviceType => _deviceType;
 
   /// 供外部(启动页)在读取缓存后设置当前认证状态
-  void setAuthState({User? user, String? accessToken, String? refreshToken, required int deviceType}) {
+  void setAuthState({
+    User? user,
+    String? accessToken,
+    String? refreshToken,
+    required int deviceType,
+  }) {
     _currentUser = user;
     _accessToken = accessToken;
     _refreshToken = refreshToken;
@@ -52,12 +59,7 @@ class AuthService  {
         if (resp['data'] != null) {
           user = User.fromJson(resp['data']);
         } else {
-          user = User(
-            id: '',
-            userName: request.userName,
-            phone: request.phone,
-            sex: request.sex,
-          );
+          user = User(id: '', userName: request.userName, phone: request.phone, sex: request.sex);
         }
         return ApiResponse.success(user);
       }
@@ -79,9 +81,14 @@ class AuthService  {
           _refreshToken = data['refreshToken'];
           _deviceType = request.deviceType;
 
-            // 解析用户（JWT）
+          // 解析用户（JWT）
           _currentUser = _accessToken != null ? AuthTools.parseUserFromToken(_accessToken!) : null;
           _currentUser ??= User(id: '', userName: request.username);
+
+          AppData appData = Get.find<AppData>();
+          appData.user.value = _currentUser!;
+          appData.token.value = _accessToken ?? '';
+          appData.refreshToken.value = _refreshToken ?? '';
 
           await AuthTools.saveAuthState(
             user: _currentUser,

@@ -1,4 +1,7 @@
-// 消息状态枚举 - 与Java MsgStatus保持一致
+import 'package:json_annotation/json_annotation.dart';
+
+/// 消息状态枚举
+@JsonEnum(valueField: "code")
 enum MessageStatus {
   fail(-1, "发送失败"),
   serverReceived(1, "消息已送达服务器"),
