@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/instance_manager.dart';
+import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/models/domain/user_search_result.dart';
 import 'package:xzll_im_flutter_client/models/request/friend_request_send_request.dart';
 
 import '../models/domain/conversation.dart';
-import '../services/auth_service.dart';
 import '../services/friend_service.dart';
 
 /// 用户搜索页面
@@ -17,7 +18,7 @@ class UserSearchScreen extends StatefulWidget {
 class _UserSearchScreenState extends State<UserSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FriendService _friendService = FriendService();
-  final AuthService _authService = AuthService();
+  final AppData _authService = Get.find();
 
   List<UserSearchResult> _searchResults = [];
   bool _isLoading = false;
@@ -50,14 +51,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     });
 
     try {
-      final currentUser = _authService.currentUser;
-      if (currentUser == null) {
-        setState(() {
-          _errorMessage = '用户未登录';
-          _isLoading = false;
-        });
-        return;
-      }
+      final currentUser = _authService.user.value;
 
       final response = await _friendService.quickSearchUsers(keyword, currentUser.id);
 
@@ -82,11 +76,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
 
   /// 发送好友申请
   Future<void> _sendFriendRequest(UserSearchResult user) async {
-    final currentUser = _authService.currentUser;
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('用户未登录')));
-      return;
-    }
+    final currentUser = _authService.user.value;
 
     // 显示输入申请消息的对话框
     final requestMessage = await _showRequestMessageDialog();
@@ -167,7 +157,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       headImage: user.headImage ?? 'assets/other_headImage.png',
       lastMessage: '',
       timestamp: '',
-      userId: _authService.currentUser?.id ?? '',
+      userId: _authService.user.value.id,
       unreadCount: 0,
       targetUserId: user.userId,
       targetUserName: user.displayName,

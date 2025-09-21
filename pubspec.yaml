@@ -28,6 +28,11 @@ dependencies:
   json_annotation: ^4.9.0
   connectivity_plus: ^7.0.0
   flex_color_scheme: ^8.3.0
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  pull_down_button: ^0.10.2
+  # 添加表单验证库
+  form_validator: ^2.1.1
 
 dev_dependencies:
   flutter_test:
@@ -74,4 +79,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
-

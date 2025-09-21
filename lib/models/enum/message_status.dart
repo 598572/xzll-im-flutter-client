@@ -4,10 +4,11 @@ import 'package:json_annotation/json_annotation.dart';
 @JsonEnum(valueField: "code")
 enum MessageStatus {
   fail(-1, "发送失败"),
-  serverReceived(1, "消息已送达服务器"),
+  serverReceived(1, "已送达"),
   offLine(2, "离线"),
   unRead(3, "未读"),
-  readed(4, "已读");
+  readed(4, "已读"),
+  withdraw(5, "已撤回");
 
   const MessageStatus(this.code, this.desc);
 

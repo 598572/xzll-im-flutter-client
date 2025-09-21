@@ -43,17 +43,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _connectWebSocket() async {
-    // 从认证服务获取真实的用户信息
-    final authService = AuthService();
-    if (!authService.isLoggedIn || authService.currentUser == null) {
+    // 从AppData获取真实的用户信息
+    final appData = AppData.to;
+    if (!appData.isLoggedIn || appData.user.value.id.isEmpty) {
       info('❌ 用户未登录，无法连接WebSocket');
       return;
     }
 
     info("🔗 开始连接WebSocket...");
     bool connected = await WebSocketService.instance.connect(
-      authService.currentUser!.id,
-      authService.accessToken ?? '',
+      appData.user.value.id,
+      appData.token.value,
     );
     if (connected) {
       info('✅ WebSocket连接成功');
@@ -119,8 +119,8 @@ class _ChatScreenState extends State<ChatScreen> {
     info("🆔 获取到消息ID: $msgId");
 
     // 获取当前用户ID
-    final authService = AuthService();
-    final currentUserId = authService.currentUser?.id ?? '';
+    final appData = AppData.to;
+    final currentUserId = appData.user.value.id ?? '';
 
     // 获取目标用户ID（优先使用targetUserId，如果没有则使用userId）
     String targetUserId = widget.conversation.targetUserId ?? widget.conversation.userId;
@@ -220,8 +220,8 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final authService = AuthService();
-                final currentUserId = authService.currentUser?.id ?? '';
+                final appData = AppData.to;
+                final currentUserId = appData.user.value.id ?? '';
                 return MessageBubble(
                   message: messages[index],
                   isMe: messages[index].fromUserId == currentUserId,

@@ -1,12 +1,13 @@
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request.dart';
 import 'package:xzll_im_flutter_client/models/domain/user_search_result.dart';
 import 'package:xzll_im_flutter_client/models/request_model.dart';
 import '../models/domain/friend.dart';
-import 'auth_service.dart';
 
 /// 好友管理服务
 class FriendService {
@@ -19,7 +20,7 @@ class FriendService {
   static const String _baseUrl = 'http://120.46.85.43:80';
   static const String _businessPath = '/api';
 
-  final AuthService _authService = AuthService();
+  AppData get _appData => Get.find<AppData>();
 
   /// 搜索用户
   Future<ApiResponse<List<UserSearchResult>>> searchUsers(UserSearchRequest request) async {
@@ -27,7 +28,7 @@ class FriendService {
       final url = Uri.parse('$_baseUrl$_businessPath/user/search');
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
@@ -62,7 +63,7 @@ class FriendService {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/request/send');
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
@@ -94,7 +95,7 @@ class FriendService {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/request/handle');
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
@@ -128,7 +129,7 @@ class FriendService {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/request/list');
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
@@ -161,7 +162,7 @@ class FriendService {
       final url = Uri.parse('$_baseUrl$_businessPath/friend/list');
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
@@ -196,7 +197,7 @@ class FriendService {
 
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(requestBody),
       );
 
@@ -230,7 +231,7 @@ class FriendService {
 
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(requestBody),
       );
 

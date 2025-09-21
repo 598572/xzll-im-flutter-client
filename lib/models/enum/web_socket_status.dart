@@ -8,6 +8,6 @@ enum WebSocketStatus {
   ///连接中
   connecting,
 
-  ///发生错误
-  error,
+  ///重连中
+  reconnecting,
 }

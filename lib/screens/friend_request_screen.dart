@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/instance_manager.dart';
+import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request.dart';
 import '../services/friend_service.dart';
-import '../services/auth_service.dart';
 import '../utils/time_utils.dart';
 
 /// 好友申请页面
@@ -15,7 +16,7 @@ class FriendRequestScreen extends StatefulWidget {
 class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FriendService _friendService = FriendService();
-  final AuthService _authService = AuthService();
+  final AppData _authService = Get.find();
   
   List<FriendRequest> _receivedRequests = [];
   List<FriendRequest> _sentRequests = [];
@@ -41,14 +42,7 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
 
   /// 加载收到的好友申请
   Future<void> _loadReceivedRequests() async {
-    final currentUser = _authService.currentUser;
-    if (currentUser == null) {
-      setState(() {
-        _errorMessageReceived = '用户未登录';
-        _isLoadingReceived = false;
-      });
-      return;
-    }
+    final currentUser = _authService.user.value;
 
     try {
       final response = await _friendService.getReceivedRequests(currentUser.id);
@@ -74,14 +68,7 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
 
   /// 加载发出的好友申请
   Future<void> _loadSentRequests() async {
-    final currentUser = _authService.currentUser;
-    if (currentUser == null) {
-      setState(() {
-        _errorMessageSent = '用户未登录';
-        _isLoadingSent = false;
-      });
-      return;
-    }
+    final currentUser = _authService.user.value;
 
     try {
       final response = await _friendService.getSentRequests(currentUser.id);
@@ -107,8 +94,7 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
 
   /// 接受好友申请
   Future<void> _acceptRequest(FriendRequest request) async {
-    final currentUser = _authService.currentUser;
-    if (currentUser == null) return;
+    final currentUser = _authService.user.value;
 
     try {
       final response = await _friendService.acceptFriendRequest(request.requestId, currentUser.id);
@@ -142,8 +128,7 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
 
   /// 拒绝好友申请
   Future<void> _rejectRequest(FriendRequest request) async {
-    final currentUser = _authService.currentUser;
-    if (currentUser == null) return;
+    final currentUser = _authService.user.value;
 
     try {
       final response = await _friendService.rejectFriendRequest(request.requestId, currentUser.id);

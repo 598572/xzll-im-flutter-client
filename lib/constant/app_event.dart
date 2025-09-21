@@ -9,10 +9,13 @@ import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 ///事件通知总线
 sealed class AppEvent {
   ///网络连接状态
-  static PublishSubject<ConnectivityStatus> networkStatus = PublishSubject<ConnectivityStatus>();
+  static BehaviorSubject<ConnectivityStatus> networkStatus =
+      BehaviorSubject<ConnectivityStatus>.seeded(ConnectivityStatus.none);
 
   ///WebSocket连接状态
-  static PublishSubject<WebSocketStatus> webSocketStatus = PublishSubject<WebSocketStatus>();
+  static BehaviorSubject<WebSocketStatus> webSocketStatus = BehaviorSubject<WebSocketStatus>.seeded(
+    WebSocketStatus.disconnected,
+  );
 
   ///消息状态变化事件
   ///[MessageStatusChangedModel] 消息状态变化时的数据模型
@@ -39,4 +42,9 @@ sealed class AppEvent {
   /// 好友申请推送回调
   static PublishSubject<FriendRequestPushMessage> onFriendRequestPush =
       PublishSubject<FriendRequestPushMessage>();
+
+  /// 收到的消息ID列表
+  /// [List<String>] 收到的消息ID列表
+  /// 通过订阅[onMsgIdsReceived]来监听收到的消息ID列表
+  static PublishSubject<List<String>> onMsgIdsReceived = PublishSubject<List<String>>();
 }
