@@ -55,13 +55,13 @@ class WebSocketService extends GetxService {
     final headers = {
       'Connection': 'Upgrade',
       'Upgrade': 'websocket',
-      'token': "Bearer ${appData.token.value}",
+      'token': appData.token.value,
       'uid': _currentUserId,
     };
     try {
       AppEvent.webSocketStatus.add(WebSocketStatus.connecting);
       _channel = IOWebSocketChannel.connect(wsUrl, headers: headers);
-      await _channel?.ready;
+      // await _channel?.ready;
       AppEvent.webSocketStatus.add(WebSocketStatus.connected);
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
     } catch (e) {
@@ -412,5 +412,11 @@ class WebSocketService extends GetxService {
     info("🔌 断开WebSocket连接");
     await _channel?.sink.close();
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
+  }
+
+  @override
+  void onClose() {
+    _channel?.sink.close();
+    super.onClose();
   }
 }

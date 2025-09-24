@@ -1,12 +1,13 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:xzll_im_flutter_client/constant/app_config.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
-import 'package:xzll_im_flutter_client/models/request/register_request.dart';
 import 'package:xzll_im_flutter_client/models/request/login_request.dart';
-import 'package:xzll_im_flutter_client/models/request/token_validate_request.dart';
-import 'package:xzll_im_flutter_client/models/request/token_refresh_request.dart';
 import 'package:xzll_im_flutter_client/models/request/logout_request.dart';
+import 'package:xzll_im_flutter_client/models/request/register_request.dart';
+import 'package:xzll_im_flutter_client/models/request/token_refresh_request.dart';
+import 'package:xzll_im_flutter_client/models/request/token_validate_request.dart';
 import 'package:xzll_im_flutter_client/repository/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -48,10 +49,8 @@ class AuthRepositoryImpl implements AuthRepository {
       final url = _uri('/oauth/token');
       final resp = await http.post(url, headers: _formHeaders(), body: request.toFormData());
       info('登录请求: ${request.toFormData()}');
-      info('登录响应状态: ${resp.statusCode}');
       info('登录响应内容: ${resp.body}');
       final data = jsonDecode(resp.body);
-      data['httpStatus'] = resp.statusCode;
       return data is Map<String, dynamic> ? data : {'success': false, 'msg': '响应格式错误'};
     } catch (e) {
       info('登录异常: $e');
@@ -68,7 +67,6 @@ class AuthRepositoryImpl implements AuthRepository {
       info('Token验证响应状态: ${resp.statusCode}');
       info('Token验证响应内容: ${resp.body}');
       final data = jsonDecode(resp.body);
-      data['httpStatus'] = resp.statusCode;
       return data is Map<String, dynamic> ? data : {'success': false, 'valid': false};
     } catch (e) {
       info('Token验证异常: $e');
@@ -82,10 +80,8 @@ class AuthRepositoryImpl implements AuthRepository {
       final url = _uri('/oauth/refresh');
       final req = TokenRefreshRequest(refreshToken: refreshToken, deviceType: deviceType);
       final resp = await http.post(url, headers: _jsonHeaders(), body: jsonEncode(req.toJson()));
-      info('Token刷新响应状态: ${resp.statusCode}');
       info('Token刷新响应内容: ${resp.body}');
       final data = jsonDecode(resp.body);
-      data['httpStatus'] = resp.statusCode;
       return data is Map<String, dynamic> ? data : {'success': false, 'msg': '响应格式错误'};
     } catch (e) {
       info('Token刷新异常: $e');
@@ -107,7 +103,6 @@ class AuthRepositoryImpl implements AuthRepository {
       info('登出响应内容: ${resp.body}');
       if (resp.body.isEmpty) return {'success': true, 'httpStatus': resp.statusCode};
       final data = jsonDecode(resp.body);
-      data['httpStatus'] = resp.statusCode;
       return data is Map<String, dynamic> ? data : {'success': true};
     } catch (e) {
       info('登出请求异常: $e');

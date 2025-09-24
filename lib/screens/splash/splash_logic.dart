@@ -3,6 +3,7 @@ import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/auth_response.dart';
+import 'package:xzll_im_flutter_client/models/enum/divice_type.dart';
 import 'package:xzll_im_flutter_client/repository/auth_repository.dart';
 import 'package:xzll_im_flutter_client/repository/impl/auth_repository_impl.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
@@ -29,27 +30,11 @@ class SplashLogic extends GetxController {
       // 1. 读取本地缓存
       final cached = await AuthTools.loadAuthState();
 
-      // 2. 基础数据验证 - 更严格的检查
-      if (_isInvalidAuthData(cached)) {
-        info('启动: 本地认证数据无效，清理缓存并跳转登录');
-        await _clearAndNavigateToLogin();
-        return;
-      }
-
-      // 3. 设置认证状态
       _appData.setAuthState(
         user: cached.user,
-        accessToken: cached.accessToken,
         refreshToken: cached.refreshToken,
-        deviceType: cached.deviceType,
+        accessToken: cached.accessToken,
       );
-
-      // 4. Token格式验证
-      if (!_isValidTokenFormat(cached.accessToken!)) {
-        info('启动: Token格式无效，清理缓存并跳转登录');
-        await _clearAndNavigateToLogin();
-        return;
-      }
 
       // 5. 验证 token 有效性（网络检查）
       final valid = await _validateToken();
@@ -59,20 +44,17 @@ class SplashLogic extends GetxController {
         return;
       }
 
-      // 6. Token失效，尝试刷新
-      if (cached.refreshToken != null && _isValidTokenFormat(cached.refreshToken!)) {
-        info('启动: Token失效，尝试刷新');
-        final refreshResult = await _refreshToken();
-        if (refreshResult.success) {
-          info('启动: Token刷新成功，进入首页');
-          await _navigateToHome();
-          return;
-        }
+      info('启动: Token失效，尝试刷新');
+      final refreshResult = await _refreshToken();
+      if (refreshResult.success) {
+        info('启动: Token刷新成功，进入首页');
+        await _navigateToHome();
+        return;
+      } else {
+        // 7. 刷新失败或无RefreshToken，清理并跳转登录
+        info('启动: Token刷新失败或无RefreshToken，清理缓存并跳转登录');
+        await _clearAndNavigateToLogin();
       }
-
-      // 7. 刷新失败或无RefreshToken，清理并跳转登录
-      info('启动: Token刷新失败或无RefreshToken，清理缓存并跳转登录');
-      await _clearAndNavigateToLogin();
     } catch (e) {
       info('启动: 鉴权过程异常 - $e');
       await _clearAndNavigateToLogin();
@@ -86,7 +68,7 @@ class SplashLogic extends GetxController {
     try {
       final resp = await _repo.validateToken(token, _appData.deviceType.value);
       // 后端有可能返回 success 或 valid 字段
-      return resp['success'] == true || resp['valid'] == true;
+      return resp['success'] == true;
     } catch (e) {
       info('Token验证异常: $e');
       return false;
@@ -101,21 +83,26 @@ class SplashLogic extends GetxController {
     }
     try {
       final resp = await _repo.refreshToken(refreshToken, _appData.deviceType.value);
-      if (resp['code'] == 1 || resp['success'] == true) {
+      if (resp['code'] == 1) {
         // 兼容之前 AuthResponse 结构
-        final authResp = AuthResponse.fromJson(_adaptRefreshJson(resp));
+        final authResp = AuthResponse.fromJson(resp["data"]);
         if (authResp.isSuccess) {
           final newAccessToken = authResp.accessToken;
           final newRefreshToken = authResp.refreshToken;
-
-          // 更新Token
-          _appData.updateTokens(accessToken: newAccessToken, refreshToken: newRefreshToken);
 
           // 解析用户（若之前未解析）
           if (_appData.user.value.id.isEmpty && newAccessToken != null) {
             final user = AuthTools.parseUserFromToken(newAccessToken);
             if (user != null) {
-              _appData.updateUser(user);
+              _appData.setAuthState(
+                user: user,
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                deviceType: DeviceType.currentDeviceType.code,
+              );
+              _navigateToHome();
+            } else {
+              _clearAndNavigateToLogin();
             }
           }
 
@@ -130,37 +117,6 @@ class SplashLogic extends GetxController {
       info('Token刷新异常: $e');
       return ApiResponse.error('网络异常，请检查网络连接');
     }
-  }
-
-  /// 适配仓库刷新结构为 AuthResponse 需要的JSON
-  Map<String, dynamic> _adaptRefreshJson(Map<String, dynamic> raw) {
-    // 假设后端刷新返回数据格式为 { code:1, data:{ token:..., refreshToken:... } }
-    final data = raw['data'];
-    return {
-      'accessToken': data?['token'],
-      'refreshToken': data?['refreshToken'],
-      'tokenType': data?['tokenType'],
-      'expiresIn': data?['expiresIn'],
-      'scope': data?['scope'],
-      // error 字段保持为空即可
-    };
-  }
-
-  /// 验证认证数据是否有效
-  bool _isInvalidAuthData(dynamic cached) {
-    return cached.accessToken == null ||
-        cached.accessToken.toString().trim().isEmpty ||
-        cached.user == null ||
-        cached.user?.id == null ||
-        cached.user!.id.toString().trim().isEmpty;
-  }
-
-  /// 验证Token格式是否有效（简单检查JWT格式）
-  bool _isValidTokenFormat(String token) {
-    if (token.trim().isEmpty) return false;
-    // JWT应该有3部分，用'.'分隔
-    final parts = token.split('.');
-    return parts.length == 3 && parts.every((part) => part.isNotEmpty);
   }
 
   /// 清理缓存并跳转登录页
