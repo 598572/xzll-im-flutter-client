@@ -55,6 +55,7 @@ const _$MessageStatusEnumMap = {
   MessageStatus.offLine: 2,
   MessageStatus.unRead: 3,
   MessageStatus.readed: 4,
+  MessageStatus.withdraw: 5,
 };
 
 const _$MessageWithdrawStatusEnumMap = {

@@ -31,6 +31,8 @@ dependencies:
   pull_down_button: ^0.10.2
   # 添加表单验证库
   form_validator: ^2.1.1
+  dio: ^5.9.0
+  talker_dio_logger: ^5.0.1
 
 dev_dependencies:
   flutter_test:

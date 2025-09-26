@@ -23,6 +23,8 @@ class WebSocketService extends GetxService {
 
   String get _currentUserId => appData.user.value.id;
 
+  late int retryCount = 3;
+
   @override
   void onInit() {
     super.onInit();
@@ -31,6 +33,7 @@ class WebSocketService extends GetxService {
 
   ///监听网络状态的变化
   void _onNetworkStatusChanged(ConnectivityStatus status) async {
+    debug(status.name);
     switch (status) {
       case ConnectivityStatus.normal:
         retryWebSocket();
@@ -63,6 +66,7 @@ class WebSocketService extends GetxService {
       _channel = IOWebSocketChannel.connect(wsUrl, headers: headers);
       // await _channel?.ready;
       AppEvent.webSocketStatus.add(WebSocketStatus.connected);
+      retryCount = 3;
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
     } catch (e) {
       error("❌ WebSocket连接失败: $e");
@@ -72,19 +76,27 @@ class WebSocketService extends GetxService {
 
   ///重试连接
   Future<void> retryWebSocket() async {
-    AppEvent.webSocketStatus.add(WebSocketStatus.reconnecting);
-    if (appData.token.isEmpty || appData.user.value.id.isEmpty || appData.refreshToken.isEmpty) {
+    if (retryCount < 1) {
       return;
     }
-    if (_channel != null) {
-      await _channel!.sink.close();
+    retryCount--;
+
+    if (AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
+      AppEvent.webSocketStatus.add(WebSocketStatus.reconnecting);
+      if (appData.token.isEmpty || appData.refreshToken.isEmpty) {
+        return;
+      }
+      if (_channel != null) {
+        await _channel!.sink.close();
+      }
+      await initWebSocket();
     }
-    await initWebSocket();
   }
 
-  void _onDone() {
+  void _onDone() async {
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
-    info("🔌 WebSocket连接已关闭");
+    waring("🔌 WebSocket连接已关闭");
+    await retryWebSocket();
   }
 
   void _onError(Object e, StackTrace stackTrace) {
