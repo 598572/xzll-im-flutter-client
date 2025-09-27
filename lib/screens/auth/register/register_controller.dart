@@ -56,12 +56,12 @@ class RegisterController extends GetxController {
   /// 验证手机号
   String? validatePhone(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'plz_enter_phone'.tr;
+      return "plz_enter_phone".tr;
     }
 
     final phoneRegex = RegExp(r'^1[3-9]\d{9}$');
     if (!phoneRegex.hasMatch(value.trim())) {
-      return 'plz_enter_valid_phone'.tr;
+      return "plz_enter_valid_phone".tr;
     }
 
     return null;
@@ -70,10 +70,10 @@ class RegisterController extends GetxController {
   /// 验证确认密码
   String? validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'plz_reenter_password'.tr;
+      return "plz_reenter_password".tr;
     }
     if (value != passwordController.text) {
-      return 'password_mismatch'.tr;
+      return "password_mismatch".tr;
     }
     return null;
   }
@@ -96,13 +96,13 @@ class RegisterController extends GetxController {
       final result = await _register(registerRequest);
 
       if (result.success) {
-        _showSuccessMessage('register_success'.tr);
+        _showSuccessMessage("register_success".tr);
         Get.offNamed(RouterName.login);
       } else {
-        _showErrorMessage(result.message ?? 'register_failed'.tr);
+        _showErrorMessage(result.message ?? "register_failed".tr);
       }
     } catch (e) {
-      _showErrorMessage('network_exception_retry'.tr);
+      _showErrorMessage("network_exception_retry".tr);
     } finally {
       isLoading(false);
     }
@@ -122,10 +122,10 @@ class RegisterController extends GetxController {
         }
         return ApiResponse.success(user);
       }
-      return ApiResponse.error(resp['msg'] ?? resp['message'] ?? 'register_failed'.tr);
+      return ApiResponse.error(resp['msg'] ?? resp['message'] ?? "register_failed".tr);
     } catch (e) {
-      info('register_exception'.trParams({'error': e.toString()}));
-      return ApiResponse.error('network_exception_check_internet'.tr);
+      info("register_exception".trParams({'error': e.toString()}));
+      return ApiResponse.error("network_exception_check_internet".tr);
     }
   }
 
@@ -137,7 +137,7 @@ class RegisterController extends GetxController {
   /// 显示成功消息
   void _showSuccessMessage(String message) {
     Get.snackbar(
-      'success'.tr,
+      "success".tr,
       message,
       backgroundColor: Colors.green,
       colorText: Colors.white,
@@ -149,7 +149,7 @@ class RegisterController extends GetxController {
   /// 显示错误消息
   void _showErrorMessage(String message) {
     Get.snackbar(
-      'error'.tr,
+      "error".tr,
       message,
       backgroundColor: Colors.red,
       colorText: Colors.white,

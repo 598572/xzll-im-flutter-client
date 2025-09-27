@@ -55,11 +55,11 @@ class LoginView extends GetView<LoginController> {
           ),
           const SizedBox(height: 16),
           Text(
-            'app_name'.tr,
+            "app_name".tr,
             style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.purple),
           ),
           const SizedBox(height: 8),
-          Text('app_slogan'.tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          Text("app_slogan".tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
         ],
       ),
     );
@@ -69,7 +69,7 @@ class LoginView extends GetView<LoginController> {
     return TextFormField(
       controller: controller.usernameController,
       decoration: InputDecoration(
-        labelText: 'username'.tr,
+        labelText: "username".tr,
         prefixIcon: const Icon(Icons.person_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -83,7 +83,7 @@ class LoginView extends GetView<LoginController> {
       ),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return 'plz_enter_username'.tr;
+          return "plz_enter_username".tr;
         }
         return null;
       },
@@ -97,7 +97,7 @@ class LoginView extends GetView<LoginController> {
         controller: controller.passwordController,
         obscureText: controller.obscurePassword.value,
         decoration: InputDecoration(
-          labelText: 'password'.tr,
+          labelText: "password".tr,
           prefixIcon: const Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(controller.obscurePassword.value ? Icons.visibility_off : Icons.visibility),
@@ -115,10 +115,10 @@ class LoginView extends GetView<LoginController> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'plz_enter_password'.tr;
+            return "plz_enter_password".tr;
           }
           if (value.length < 6) {
-            return 'password_too_short'.trParams({'min': 6.toString()});
+            return "password_too_short".trParams({"min": 6.toString()});
           }
           return null;
         },
@@ -149,7 +149,7 @@ class LoginView extends GetView<LoginController> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : Text('login'.tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              : Text("login".tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -161,7 +161,7 @@ class LoginView extends GetView<LoginController> {
         Expanded(child: Divider(color: Colors.grey[300])),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('or'.tr, style: TextStyle(color: Colors.grey[600])),
+          child: Text("or".tr, style: TextStyle(color: Colors.grey[600])),
         ),
         Expanded(child: Divider(color: Colors.grey[300])),
       ],
@@ -180,7 +180,7 @@ class LoginView extends GetView<LoginController> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           child: Text(
-            'register_new_account'.tr,
+            "register_new_account".tr,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
@@ -192,7 +192,7 @@ class LoginView extends GetView<LoginController> {
     return Center(
       child: Column(
         children: [
-          Text('login_means_agree'.tr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text("login_means_agree".tr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -201,7 +201,7 @@ class LoginView extends GetView<LoginController> {
                   // TODO: 显示用户协议
                 },
                 child: Text(
-                  'user_agreement'.tr,
+                  "user_agreement".tr,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.purple[600],
@@ -209,13 +209,13 @@ class LoginView extends GetView<LoginController> {
                   ),
                 ),
               ),
-              Text(' ${"and".tr} ', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(" ${'and'.tr} ", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               GestureDetector(
                 onTap: () {
                   // TODO: 显示隐私政策
                 },
                 child: Text(
-                  'privacy_policy'.tr,
+                  "privacy_policy".tr,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.purple[600],

@@ -20,7 +20,7 @@ class XzllImClient extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'app_name'.tr,
+      title: "app_name".tr,
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: AppTheme.light.copyWith(primaryColor: Colors.purple),

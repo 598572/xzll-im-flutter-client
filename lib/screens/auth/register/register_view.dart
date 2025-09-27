@@ -18,7 +18,7 @@ class RegisterView extends GetView<RegisterController> {
           onPressed: controller.navigateBack,
         ),
         title: Text(
-          'register_account'.tr,
+          "register_account".tr,
           style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -59,11 +59,11 @@ class RegisterView extends GetView<RegisterController> {
     return Column(
       children: [
         Text(
-          'create_new_account'.tr,
+          "create_new_account".tr,
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.purple),
         ),
         const SizedBox(height: 8),
-        Text('fill_info_register'.tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+        Text("fill_info_register".tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
       ],
     );
   }
@@ -72,7 +72,7 @@ class RegisterView extends GetView<RegisterController> {
     return TextFormField(
       controller: controller.usernameController,
       decoration: InputDecoration(
-        labelText: 'username'.tr,
+        labelText: "username".tr,
         prefixIcon: const Icon(Icons.person_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -86,10 +86,10 @@ class RegisterView extends GetView<RegisterController> {
       ),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return 'plz_enter_username'.tr;
+          return "plz_enter_username".tr;
         }
         if (value.trim().length < 2) {
-          return 'username_too_short'.trParams({'min': 2.toString()});
+          return "username_too_short".trParams({"min": 2.toString()});
         }
         return null;
       },
@@ -102,7 +102,7 @@ class RegisterView extends GetView<RegisterController> {
       controller: controller.phoneController,
       keyboardType: TextInputType.phone,
       decoration: InputDecoration(
-        labelText: 'phone_number'.tr,
+        labelText: "phone_number".tr,
         prefixIcon: const Icon(Icons.phone_outlined),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -125,7 +125,7 @@ class RegisterView extends GetView<RegisterController> {
         controller: controller.passwordController,
         obscureText: controller.obscurePassword.value,
         decoration: InputDecoration(
-          labelText: 'password'.tr,
+          labelText: "password".tr,
           prefixIcon: const Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(controller.obscurePassword.value ? Icons.visibility_off : Icons.visibility),
@@ -143,10 +143,10 @@ class RegisterView extends GetView<RegisterController> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'plz_enter_password'.tr;
+            return "plz_enter_password".tr;
           }
           if (value.length < 6) {
-            return 'password_too_short'.trParams({'min': 6.toString()});
+            return "password_too_short".trParams({"min": 6.toString()});
           }
           return null;
         },
@@ -161,7 +161,7 @@ class RegisterView extends GetView<RegisterController> {
         controller: controller.confirmPasswordController,
         obscureText: controller.obscureConfirmPassword.value,
         decoration: InputDecoration(
-          labelText: 'confirm_password'.tr,
+          labelText: "confirm_password".tr,
           prefixIcon: const Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(
@@ -191,7 +191,7 @@ class RegisterView extends GetView<RegisterController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'gender'.tr,
+          "gender".tr,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.grey[700]),
         ),
         const SizedBox(height: 12),
@@ -226,7 +226,7 @@ class RegisterView extends GetView<RegisterController> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'male'.tr,
+                          "male".tr,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -269,7 +269,7 @@ class RegisterView extends GetView<RegisterController> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'female'.tr,
+                          "female".tr,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -311,7 +311,7 @@ class RegisterView extends GetView<RegisterController> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : Text('register'.tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              : Text("register".tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -322,11 +322,11 @@ class RegisterView extends GetView<RegisterController> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('already_have_account'.tr, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          Text("already_have_account".tr, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           GestureDetector(
             onTap: controller.navigateBack,
             child: Text(
-              'login_now'.tr,
+              "login_now".tr,
               style: TextStyle(fontSize: 14, color: Colors.purple, fontWeight: FontWeight.bold),
             ),
           ),
