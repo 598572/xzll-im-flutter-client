@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import 'register_controller.dart';
 
 class RegisterView extends GetView<RegisterController> {
@@ -16,8 +17,8 @@ class RegisterView extends GetView<RegisterController> {
           icon: const Icon(Icons.arrow_back, color: Colors.purple),
           onPressed: controller.navigateBack,
         ),
-        title: const Text(
-          '注册账号',
+        title: Text(
+          "register_account".tr,
           style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -57,12 +58,12 @@ class RegisterView extends GetView<RegisterController> {
   Widget _buildTitle() {
     return Column(
       children: [
-        const Text(
-          '创建新账号',
+        Text(
+          "create_new_account".tr,
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.purple),
         ),
         const SizedBox(height: 8),
-        Text('填写信息完成注册', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+        Text("fill_info_register".tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
       ],
     );
   }
@@ -71,7 +72,7 @@ class RegisterView extends GetView<RegisterController> {
     return TextFormField(
       controller: controller.usernameController,
       decoration: InputDecoration(
-        labelText: '用户名',
+        labelText: "username".tr,
         prefixIcon: const Icon(Icons.person_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -85,10 +86,10 @@ class RegisterView extends GetView<RegisterController> {
       ),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return '请输入用户名';
+          return "plz_enter_username".tr;
         }
         if (value.trim().length < 2) {
-          return '用户名长度不能少于2位';
+          return "username_too_short".trParams({"min": 2.toString()});
         }
         return null;
       },
@@ -101,7 +102,7 @@ class RegisterView extends GetView<RegisterController> {
       controller: controller.phoneController,
       keyboardType: TextInputType.phone,
       decoration: InputDecoration(
-        labelText: '手机号',
+        labelText: "phone_number".tr,
         prefixIcon: const Icon(Icons.phone_outlined),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -124,7 +125,7 @@ class RegisterView extends GetView<RegisterController> {
         controller: controller.passwordController,
         obscureText: controller.obscurePassword.value,
         decoration: InputDecoration(
-          labelText: '密码',
+          labelText: "password".tr,
           prefixIcon: const Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(controller.obscurePassword.value ? Icons.visibility_off : Icons.visibility),
@@ -142,10 +143,10 @@ class RegisterView extends GetView<RegisterController> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return '请输入密码';
+            return "plz_enter_password".tr;
           }
           if (value.length < 6) {
-            return '密码长度不能少于6位';
+            return "password_too_short".trParams({"min": 6.toString()});
           }
           return null;
         },
@@ -160,7 +161,7 @@ class RegisterView extends GetView<RegisterController> {
         controller: controller.confirmPasswordController,
         obscureText: controller.obscureConfirmPassword.value,
         decoration: InputDecoration(
-          labelText: '确认密码',
+          labelText: "confirm_password".tr,
           prefixIcon: const Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(
@@ -190,7 +191,7 @@ class RegisterView extends GetView<RegisterController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '性别',
+          "gender".tr,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.grey[700]),
         ),
         const SizedBox(height: 12),
@@ -225,7 +226,7 @@ class RegisterView extends GetView<RegisterController> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '男',
+                          "male".tr,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -268,7 +269,7 @@ class RegisterView extends GetView<RegisterController> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '女',
+                          "female".tr,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -310,7 +311,7 @@ class RegisterView extends GetView<RegisterController> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Text('注册', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              : Text("register".tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -321,11 +322,11 @@ class RegisterView extends GetView<RegisterController> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('已有账号？', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          Text("already_have_account".tr, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           GestureDetector(
             onTap: controller.navigateBack,
-            child: const Text(
-              '立即登录',
+            child: Text(
+              "login_now".tr,
               style: TextStyle(fontSize: 14, color: Colors.purple, fontWeight: FontWeight.bold),
             ),
           ),

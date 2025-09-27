@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import 'login_controller.dart';
 
 class LoginView extends GetView<LoginController> {
@@ -53,12 +54,12 @@ class LoginView extends GetView<LoginController> {
             child: const Icon(Icons.chat_bubble_outline, size: 50, color: Colors.white),
           ),
           const SizedBox(height: 16),
-          const Text(
-            '蝎聊',
+          Text(
+            "app_name".tr,
             style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.purple),
           ),
           const SizedBox(height: 8),
-          Text('连接你我，畅享沟通', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          Text("app_slogan".tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
         ],
       ),
     );
@@ -68,7 +69,7 @@ class LoginView extends GetView<LoginController> {
     return TextFormField(
       controller: controller.usernameController,
       decoration: InputDecoration(
-        labelText: '用户名',
+        labelText: "username".tr,
         prefixIcon: const Icon(Icons.person_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -82,7 +83,7 @@ class LoginView extends GetView<LoginController> {
       ),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return '请输入用户名';
+          return "plz_enter_username".tr;
         }
         return null;
       },
@@ -96,7 +97,7 @@ class LoginView extends GetView<LoginController> {
         controller: controller.passwordController,
         obscureText: controller.obscurePassword.value,
         decoration: InputDecoration(
-          labelText: '密码',
+          labelText: "password".tr,
           prefixIcon: const Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(controller.obscurePassword.value ? Icons.visibility_off : Icons.visibility),
@@ -114,10 +115,10 @@ class LoginView extends GetView<LoginController> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return '请输入密码';
+            return "plz_enter_password".tr;
           }
           if (value.length < 6) {
-            return '密码长度不能少于6位';
+            return "password_too_short".trParams({"min": 6.toString()});
           }
           return null;
         },
@@ -148,7 +149,7 @@ class LoginView extends GetView<LoginController> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Text('登录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              : Text("login".tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -160,7 +161,7 @@ class LoginView extends GetView<LoginController> {
         Expanded(child: Divider(color: Colors.grey[300])),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('或', style: TextStyle(color: Colors.grey[600])),
+          child: Text("or".tr, style: TextStyle(color: Colors.grey[600])),
         ),
         Expanded(child: Divider(color: Colors.grey[300])),
       ],
@@ -178,7 +179,10 @@ class LoginView extends GetView<LoginController> {
             side: const BorderSide(color: Colors.purple),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text('注册新账号', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: Text(
+            "register_new_account".tr,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
       ),
     );
@@ -188,7 +192,7 @@ class LoginView extends GetView<LoginController> {
     return Center(
       child: Column(
         children: [
-          Text('登录即表示同意', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text("login_means_agree".tr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -197,7 +201,7 @@ class LoginView extends GetView<LoginController> {
                   // TODO: 显示用户协议
                 },
                 child: Text(
-                  '《用户协议》',
+                  "user_agreement".tr,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.purple[600],
@@ -205,13 +209,13 @@ class LoginView extends GetView<LoginController> {
                   ),
                 ),
               ),
-              Text(' 和 ', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(" ${'and'.tr} ", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               GestureDetector(
                 onTap: () {
                   // TODO: 显示隐私政策
                 },
                 child: Text(
-                  '《隐私政策》',
+                  "privacy_policy".tr,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.purple[600],

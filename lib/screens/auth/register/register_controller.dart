@@ -56,12 +56,12 @@ class RegisterController extends GetxController {
   /// 验证手机号
   String? validatePhone(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return '请输入手机号';
+      return "plz_enter_phone".tr;
     }
 
     final phoneRegex = RegExp(r'^1[3-9]\d{9}$');
     if (!phoneRegex.hasMatch(value.trim())) {
-      return '请输入有效的手机号';
+      return "plz_enter_valid_phone".tr;
     }
 
     return null;
@@ -70,10 +70,10 @@ class RegisterController extends GetxController {
   /// 验证确认密码
   String? validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return '请再次输入密码';
+      return "plz_reenter_password".tr;
     }
     if (value != passwordController.text) {
-      return '两次输入的密码不一致';
+      return "password_mismatch".tr;
     }
     return null;
   }
@@ -96,13 +96,13 @@ class RegisterController extends GetxController {
       final result = await _register(registerRequest);
 
       if (result.success) {
-        _showSuccessMessage('注册成功！请登录');
+        _showSuccessMessage("register_success".tr);
         Get.offNamed(RouterName.login);
       } else {
-        _showErrorMessage(result.message ?? '注册失败');
+        _showErrorMessage(result.message ?? "register_failed".tr);
       }
     } catch (e) {
-      _showErrorMessage('网络异常，请稍后重试');
+      _showErrorMessage("network_exception_retry".tr);
     } finally {
       isLoading(false);
     }
@@ -122,10 +122,10 @@ class RegisterController extends GetxController {
         }
         return ApiResponse.success(user);
       }
-      return ApiResponse.error(resp['msg'] ?? resp['message'] ?? '注册失败');
+      return ApiResponse.error(resp['msg'] ?? resp['message'] ?? "register_failed".tr);
     } catch (e) {
-      info('注册异常: $e');
-      return ApiResponse.error('网络异常，请检查网络连接');
+      info("register_exception".trParams({'error': e.toString()}));
+      return ApiResponse.error("network_exception_check_internet".tr);
     }
   }
 
@@ -137,7 +137,7 @@ class RegisterController extends GetxController {
   /// 显示成功消息
   void _showSuccessMessage(String message) {
     Get.snackbar(
-      '成功',
+      "success".tr,
       message,
       backgroundColor: Colors.green,
       colorText: Colors.white,
@@ -149,7 +149,7 @@ class RegisterController extends GetxController {
   /// 显示错误消息
   void _showErrorMessage(String message) {
     Get.snackbar(
-      '错误',
+      "error".tr,
       message,
       backgroundColor: Colors.red,
       colorText: Colors.white,
