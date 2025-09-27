@@ -58,13 +58,13 @@ class LoginController extends GetxController {
       final result = await _login(loginRequest);
 
       if (result.success) {
-        _showSuccessMessage('登录成功！欢迎 ${result.data?.userName ?? ''}');
+        _showSuccessMessage('login_success'.trParams({'userName': result.data?.userName ?? ''}));
         Get.offAllNamed(RouterName.home);
       } else {
-        _showErrorMessage(result.message ?? '登录失败');
+        _showErrorMessage(result.message ?? 'login_failed'.tr);
       }
     } catch (e) {
-      _showErrorMessage('网络异常，请稍后重试');
+      _showErrorMessage('network_exception_retry'.tr);
     } finally {
       isLoading(false);
     }
@@ -96,12 +96,12 @@ class LoginController extends GetxController {
           await _appData.saveAuthState();
           return ApiResponse.success(finalUser);
         }
-        return ApiResponse.error('登录响应数据为空');
+        return ApiResponse.error('');
       }
-      return ApiResponse.error(resp['msg'] ?? '登录失败');
+      return ApiResponse.error(resp['msg'] ?? 'login_failed'.tr);
     } catch (e) {
-      info('登录异常: $e');
-      return ApiResponse.error('网络异常，请检查网络连接');
+      info('login_exception'.trParams({'error': '$e'}));
+      return ApiResponse.error('network_exception_check_internet'.tr);
     }
   }
 
@@ -113,7 +113,7 @@ class LoginController extends GetxController {
   /// 显示成功消息
   void _showSuccessMessage(String message) {
     Get.snackbar(
-      '成功',
+      'success'.tr,
       message,
       backgroundColor: Colors.green,
       colorText: Colors.white,
@@ -125,7 +125,7 @@ class LoginController extends GetxController {
   /// 显示错误消息
   void _showErrorMessage(String message) {
     Get.snackbar(
-      '错误',
+      'error'.tr,
       message,
       backgroundColor: Colors.red,
       colorText: Colors.white,

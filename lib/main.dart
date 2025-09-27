@@ -20,7 +20,7 @@ class XzllImClient extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: '蝎聊',
+      title: 'app_name'.tr,
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: AppTheme.light.copyWith(primaryColor: Colors.purple),
@@ -28,7 +28,8 @@ class XzllImClient extends StatelessWidget {
       getPages: RouterPages.pages,
       initialRoute: RouterName.splash,
       translations: AppTranslation(),
-      locale: Get.deviceLocale, // TODO: 本地缓存Local
+      // TODO: 本地缓存Local
+      locale: Get.deviceLocale,
       fallbackLocale: const Locale('zh', 'CN'),
     );
   }
