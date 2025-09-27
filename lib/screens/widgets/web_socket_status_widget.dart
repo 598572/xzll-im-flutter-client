@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:rxdart_flutter/rxdart_flutter.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
@@ -21,22 +22,22 @@ class WebSocketStatusWidget extends StatelessWidget {
             case WebSocketStatus.connected:
               iconData = Icons.cloud_done;
               iconColor = Colors.green;
-              tooltip = "已连接";
+              tooltip = "connected".tr;
               break;
             case WebSocketStatus.connecting:
               iconData = Icons.cloud_upload;
               iconColor = Colors.orange;
-              tooltip = "连接中";
+              tooltip = "connecting".tr;
               break;
             case WebSocketStatus.disconnected:
               iconData = Icons.cloud_off;
               iconColor = Colors.red;
-              tooltip = "未连接";
+              tooltip = "disconnected".tr;
               break;
             case WebSocketStatus.reconnecting:
               iconData = Icons.cloud_circle;
               iconColor = Colors.blue;
-              tooltip = "重连中";
+              tooltip = "reconnecting".tr;
               break;
           }
           return Tooltip(

@@ -54,4 +54,8 @@ const Map<String, String> zhCN = {
   "no_refresh_token": "没有刷新令牌",
   "token_refresh_failed": "Token刷新失败",
   "token_refresh_exception": "Token刷新异常: @error",
+  "connected": "已连接",
+  "connecting": "连接中",
+  "disconnected": "未连接",
+  "reconnecting": "重连中",
 };
