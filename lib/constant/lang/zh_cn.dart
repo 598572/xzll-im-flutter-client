@@ -50,4 +50,8 @@ const Map<String, String> zhCN = {
   "unknown_user": "未知用户",
   "discover": "发现",
   "me": "我",
+  "starting": "正在启动...",
+  "no_refresh_token": "没有刷新令牌",
+  "token_refresh_failed": "Token刷新失败",
+  "token_refresh_exception": "Token刷新异常: @error",
 };

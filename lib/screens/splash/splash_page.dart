@@ -27,8 +27,8 @@ class SplashPage extends GetView<SplashLogic> {
             const SizedBox(height: 32),
 
             // 应用名称
-            const Text(
-              '蝎聊',
+            Text(
+              "app_name".tr,
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.purple),
             ),
             const SizedBox(height: 16),
@@ -39,7 +39,7 @@ class SplashPage extends GetView<SplashLogic> {
             ),
             const SizedBox(height: 16),
 
-            Text('正在启动...', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+            Text("starting".tr, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
           ],
         ),
       ),

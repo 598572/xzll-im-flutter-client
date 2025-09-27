@@ -97,7 +97,7 @@ class SplashLogic extends GetxController {
   Future<ApiResponse<String>> _refreshToken() async {
     final refreshToken = _appData.refreshToken.value;
     if (refreshToken.isEmpty) {
-      return ApiResponse.error('没有刷新令牌');
+      return ApiResponse.error("no_refresh_token".tr);
     }
     try {
       final resp = await _repo.refreshToken(refreshToken, _appData.deviceType.value);
@@ -123,12 +123,12 @@ class SplashLogic extends GetxController {
           await _appData.saveAuthState();
           return ApiResponse.success(_appData.token.value);
         }
-        return ApiResponse.error(authResp.errorDescription ?? 'Token刷新失败');
+        return ApiResponse.error(authResp.errorDescription ?? "token_refresh_failed".tr);
       }
-      return ApiResponse.error(resp['msg'] ?? 'Token刷新失败');
+      return ApiResponse.error(resp['msg'] ?? "token_refresh_failed".tr);
     } catch (e) {
-      info('Token刷新异常: $e');
-      return ApiResponse.error('网络异常，请检查网络连接');
+      info("token_refresh_exception".trParams({'error': e.toString()}));
+      return ApiResponse.error("network_exception_check_internet".tr);
     }
   }
 
