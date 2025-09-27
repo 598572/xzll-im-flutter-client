@@ -100,7 +100,7 @@ class LoginController extends GetxController {
       }
       return ApiResponse.error(resp['msg'] ?? 'login_failed'.tr);
     } catch (e) {
-      info('login_exception'.trParams({'error': '$e'}));
+      info('login_exception'.trParams({'error': e.toString()}));
       return ApiResponse.error('network_exception_check_internet'.tr);
     }
   }
