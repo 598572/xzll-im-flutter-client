@@ -8,7 +8,7 @@ class ContactsView extends GetView<ContactsLogic> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("联系人"), centerTitle: true),
+      appBar: AppBar(title: Text('contacts'.tr), centerTitle: true),
       body: CustomScrollView(slivers: []),
     );
   }
