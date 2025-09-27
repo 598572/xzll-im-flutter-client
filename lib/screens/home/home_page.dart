@@ -27,10 +27,10 @@ class HomePage extends GetView<HomeLogic> {
           currentIndex: controller.currentIndex.value,
           onTap: controller.changePage,
           items: [
-            BottomNavigationBarItem(icon: Icon(Icons.message), label: '消息'),
-            BottomNavigationBarItem(icon: Icon(Icons.contacts), label: '通讯录'),
-            BottomNavigationBarItem(icon: Icon(Icons.explore), label: '发现'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: '我'),
+            BottomNavigationBarItem(icon: Icon(Icons.message), label: "conversation".tr),
+            BottomNavigationBarItem(icon: Icon(Icons.contacts), label: "contacts".tr),
+            BottomNavigationBarItem(icon: Icon(Icons.explore), label: "discover".tr),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: "me"),
           ],
         );
       }),

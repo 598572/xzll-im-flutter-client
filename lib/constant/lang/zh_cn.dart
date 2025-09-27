@@ -42,10 +42,12 @@ const Map<String, String> zhCN = {
   "register_success": "注册成功！请登录",
   "register_failed": "注册失败",
   "register_exception": "注册异常: @error",
-  "contacts": "联系人",
+  "contacts": "通讯录",
   "conversation": "消息",
   "add_friend": "添加好友",
   "create_group_chat": "创建群聊",
   "scan_it": "扫一扫",
   "unknown_user": "未知用户",
+  "discover": "发现",
+  "me": "我",
 };
