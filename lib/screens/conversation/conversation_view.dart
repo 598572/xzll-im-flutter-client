@@ -12,16 +12,27 @@ class ConversationView extends GetView<ConversationLogic> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(mainAxisSize: MainAxisSize.min, children: [Text("消息"), WebSocketStatusWidget()]),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [Text("conversation".tr), WebSocketStatusWidget()],
+        ),
         centerTitle: true,
         actions: [
           PullDownButton(
             routeTheme: PullDownMenuRouteTheme(width: 150),
             itemBuilder: (BuildContext context) {
               return [
-                PullDownMenuItem(onTap: () {}, title: "添加好友", icon: Icons.person_add_alt),
-                PullDownMenuItem(onTap: () {}, title: "创建群聊", icon: Icons.group_add_outlined),
-                PullDownMenuItem(onTap: () {}, title: "扫一扫", icon: Icons.qr_code_scanner_outlined),
+                PullDownMenuItem(onTap: () {}, title: "add_friend".tr, icon: Icons.person_add_alt),
+                PullDownMenuItem(
+                  onTap: () {},
+                  title: "create_group_chat".tr,
+                  icon: Icons.group_add_outlined,
+                ),
+                PullDownMenuItem(
+                  onTap: () {},
+                  title: "scan_it".tr,
+                  icon: Icons.qr_code_scanner_outlined,
+                ),
               ];
             },
             buttonBuilder: (BuildContext context, Future<void> Function() showMenu) {
@@ -36,7 +47,10 @@ class ConversationView extends GetView<ConversationLogic> {
             Conversation conversation = controller.conversationList[index];
             return ListTile(
               leading: FlutterLogo(size: 36),
-              title: Text(conversation.targetUserName ?? "未知用户", style: Get.textTheme.titleSmall),
+              title: Text(
+                conversation.targetUserName ?? "unknown_user".tr,
+                style: Get.textTheme.titleSmall,
+              ),
               subtitle: Text(conversation.lastMessage ?? "", style: Get.textTheme.bodySmall),
             );
           },

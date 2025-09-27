@@ -44,4 +44,8 @@ const Map<String, String> zhCN = {
   "register_exception": "注册异常: @error",
   "contacts": "联系人",
   "conversation": "消息",
+  "add_friend": "添加好友",
+  "create_group_chat": "创建群聊",
+  "scan_it": "扫一扫",
+  "unknown_user": "未知用户",
 };
