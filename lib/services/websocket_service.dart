@@ -1,27 +1,37 @@
-import 'dart:convert';
+import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:get/get.dart';
 import "package:web_socket_channel/io.dart";
+import 'package:xzll_im_flutter_client/constant/app_config.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/constant/app_tools.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import 'package:xzll_im_flutter_client/generated/im_message.pb.dart';
 import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
 import 'package:xzll_im_flutter_client/models/domain/message_status_changed_model.dart';
 import 'package:xzll_im_flutter_client/models/enum/connectivity_status.dart';
-import 'package:xzll_im_flutter_client/models/enum/handle_type.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_type.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 
-/// WebSocket服务类
+/// WebSocket服务类 - Protobuf版本
 class WebSocketService extends GetxService {
   IOWebSocketChannel? _channel;
 
   final AppData appData = Get.find<AppData>();
 
   String get _currentUserId => appData.user.value.id;
+
+  late int retryCount = AppConfig.webSocketRetryCount;
+
+  // 本地消息ID缓存
+  final List<String> _msgIds = [];
+  bool _isGettingMsgIds = false;
 
   @override
   void onInit() {
@@ -31,6 +41,7 @@ class WebSocketService extends GetxService {
 
   ///监听网络状态的变化
   void _onNetworkStatusChanged(ConnectivityStatus status) async {
+    debug(status.name);
     switch (status) {
       case ConnectivityStatus.normal:
         retryWebSocket();
@@ -51,19 +62,23 @@ class WebSocketService extends GetxService {
       waring("⚠️ 用户未登录，无法初始化WebSocket");
       return;
     }
-    final wsUrl = 'ws://120.46.85.43:80/websocket?userId=$_currentUserId';
+    final wsUrl = AppConfig.getWebSocketUrl(_currentUserId);
     final headers = {
       'Connection': 'Upgrade',
       'Upgrade': 'websocket',
-      'token': "Bearer ${appData.token.value}",
+      'token': appData.token.value,
       'uid': _currentUserId,
     };
     try {
       AppEvent.webSocketStatus.add(WebSocketStatus.connecting);
       _channel = IOWebSocketChannel.connect(wsUrl, headers: headers);
-      await _channel?.ready;
       AppEvent.webSocketStatus.add(WebSocketStatus.connected);
+      retryCount = AppConfig.webSocketRetryCount;
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
+      
+      // 连接成功后立即获取消息ID
+      await Future.delayed(Duration(milliseconds: 500));
+      getMsgIdsFromServer();
     } catch (e) {
       error("❌ WebSocket连接失败: $e");
       AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
@@ -72,19 +87,27 @@ class WebSocketService extends GetxService {
 
   ///重试连接
   Future<void> retryWebSocket() async {
-    AppEvent.webSocketStatus.add(WebSocketStatus.reconnecting);
-    if (appData.token.isEmpty || appData.user.value.id.isEmpty || appData.refreshToken.isEmpty) {
+    if (retryCount < 1) {
       return;
     }
-    if (_channel != null) {
-      await _channel!.sink.close();
+    retryCount--;
+
+    if (AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
+      AppEvent.webSocketStatus.add(WebSocketStatus.reconnecting);
+      if (appData.token.isEmpty || appData.refreshToken.isEmpty) {
+        return;
+      }
+      if (_channel != null) {
+        await _channel!.sink.close();
+      }
+      await initWebSocket();
     }
-    await initWebSocket();
   }
 
-  void _onDone() {
+  void _onDone() async {
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
-    info("🔌 WebSocket连接已关闭");
+    waring("🔌 WebSocket连接已关闭");
+    await retryWebSocket();
   }
 
   void _onError(Object e, StackTrace stackTrace) {
@@ -94,265 +117,332 @@ class WebSocketService extends GetxService {
 
   // 从服务器获取消息ID
   Future<void> getMsgIdsFromServer() async {
-    var request = {
-      'url': HandleType.c2cGetBatchMsgId.url,
-      'body': {'fromUserId': _currentUserId},
-    };
-    _channel?.sink.add(jsonEncode(request));
-    info("📤 发送获取消息ID请求: ${jsonEncode(request)}");
-  }
+    if (_isGettingMsgIds) {
+      info("⏳ 正在获取消息ID中...");
+      return;
+    }
 
-  // 请求会话列表
-  void requestConversations() {
-    info("📋 请求会话列表...");
-    var request = {
-      'url': HandleType.conversationList.url,
-      'body': {'userId': _currentUserId, 'page': 1, 'size': 50},
-    };
-    _channel?.sink.add(jsonEncode(request));
-    info("📤 发送会话列表请求: ${jsonEncode(request)}");
+    try {
+      _isGettingMsgIds = true;
+      
+      // 构建获取消息ID请求
+      GetBatchMsgIdsReq getBatchMsgIdsReq = GetBatchMsgIdsReq(
+        userId: _currentUserId,
+      );
+
+      // 包装为 ImProtoRequest
+      ImProtoRequest protoRequest = ImProtoRequest(
+        type: MsgType.GET_BATCH_MSG_IDS,
+        payload: getBatchMsgIdsReq.writeToBuffer(),
+      );
+
+      // 发送 Protobuf 二进制消息
+      Uint8List bytes = protoRequest.writeToBuffer();
+      _channel?.sink.add(bytes);
+      info("📤 发送获取消息ID请求");
+    } catch (e) {
+      error("❌ 获取消息ID失败: $e");
+      _isGettingMsgIds = false;
+    }
   }
 
   // 处理接收到的消息
   void _onData(dynamic message) {
     try {
-      info("📨 收到原始消息: $message");
-      var response = jsonDecode(message);
-      String url = response['url'] ?? '';
-      info("🔗 消息URL: $url");
-      final handleType = HandleType.fromUrl(url);
-      if (handleType == null) {
-        info("❓ 未知消息类型: $url");
+      if (message is! Uint8List && message is! List<int>) {
+        info("⚠️ 收到非二进制消息，跳过: ${message.runtimeType}");
         return;
       }
-      switch (handleType) {
-        case HandleType.c2cSend:
-          _handleC2CSendResponse(response);
+
+      // 解析 ImProtoResponse
+      Uint8List bytes = message is Uint8List ? message : Uint8List.fromList(message);
+      ImProtoResponse protoResponse = ImProtoResponse.fromBuffer(bytes);
+
+      info("📨 收到 Protobuf 消息 - 类型: ${protoResponse.type.name}, 响应码: ${protoResponse.code}, msg: ${protoResponse.msg}");
+
+      // 根据消息类型处理
+      _handleProtoMessage(protoResponse);
+    } catch (e, stackTrace) {
+      error("❌ 处理消息失败: $e\n$stackTrace");
+    }
+  }
+
+  /// 处理 Protobuf 消息
+  void _handleProtoMessage(ImProtoResponse protoResponse) {
+    try {
+      switch (protoResponse.type) {
+        case MsgType.C2C_MSG_PUSH:
+          // 处理服务端推送的单聊消息
+          _handlePushMsg(protoResponse);
           break;
-        case HandleType.c2cReceive:
-          _handleC2CReceiveMessage(response);
+
+        case MsgType.PUSH_BATCH_MSG_IDS:
+          // 处理批量消息ID
+          _handleBatchMsgIds(protoResponse);
           break;
-        case HandleType.c2cGetBatchMsgId:
-          _handleGetMsgIdsResponse(response);
+
+        case MsgType.C2C_ACK:
+          // 处理ACK消息（服务端推送的ACK）
+          _handleAckMessage(protoResponse);
           break;
-        case HandleType.c2cAckServerReceived:
-          _handleReceivedAckResponse(response);
+
+        case MsgType.C2C_WITHDRAW:
+          // 处理撤回通知
+          _handleWithdrawMessage(protoResponse);
           break;
-        case HandleType.c2cAckToUserUnread:
-          _handleUnreadAckResponse(response);
+
+        case MsgType.FRIEND_REQUEST:
+          // 处理好友请求
+          _handleFriendRequest(protoResponse);
           break;
-        case HandleType.c2cAckToUserRead:
-          _handleReadAckResponse(response);
+
+        case MsgType.FRIEND_RESPONSE:
+          // 处理好友响应
+          _handleFriendResponse(protoResponse);
           break;
-        case HandleType.c2cWithdraw:
-          _handleWithdrawResponse(response);
-          break;
-        case HandleType.conversationList:
-          _handleConversationsResponse(response);
-          break;
-        case HandleType.conversationUpdate:
-          _handleConversationUpdateResponse(response);
-          break;
-        case HandleType.friendRequestPush:
-          _handleFriendRequestPush(response);
-          break;
-        case HandleType.friendRequestHandlePush:
-          _handleFriendRequestHandlePush(response);
+
+        default:
+          info("❓ 未知消息类型: ${protoResponse.type.name}");
           break;
       }
-    } catch (e) {
-      info("❌ 处理消息失败: $e");
+    } catch (e, stackTrace) {
+      error("❌ 处理 Protobuf 消息异常: $e\n$stackTrace");
     }
   }
 
-  // 处理会话列表响应
-  void _handleConversationsResponse(Map<String, dynamic> response) {
+  /// 处理推送消息（单聊消息）
+  void _handlePushMsg(ImProtoResponse protoResponse) {
     try {
-      List<dynamic> conversationData = response['data'] ?? [];
-      List<Conversation> conversations = conversationData.map((item) {
-        return Conversation.fromJson(item);
-      }).toList();
-      info("📋 解析到 ${conversations.length} 个会话");
-      AppEvent.onConversationsUpdated.add(conversations);
-    } catch (e) {
-      info("❌ 解析会话列表失败: $e");
-    }
-  }
+      C2CMsgPush pushMsg = C2CMsgPush.fromBuffer(protoResponse.payload);
 
-  // 处理会话更新响应
-  void _handleConversationUpdateResponse(Map<String, dynamic> response) {
-    try {
-      var conversationData = response['data'];
-      if (conversationData != null) {
-        Conversation conversation = Conversation.fromJson(conversationData);
-        info("📋 会话更新: ${conversation.name}");
-        AppEvent.onConversationUpdated.add(conversation);
-      }
-    } catch (e) {
-      info("❌ 解析会话更新失败: $e");
-    }
-  }
+      info("============================================");
+      info("【收到单聊消息】");
+      info("  消息ID: ${pushMsg.msgId}");
+      info("  发送人: ${pushMsg.from}");
+      info("  接收人: ${pushMsg.to}");
+      info("  消息格式: ${pushMsg.format}");
+      info("  消息内容: ${pushMsg.content}");
+      info("  时间戳: ${pushMsg.time}");
+      info("  会话ID: ${pushMsg.chatId}");
+      info("============================================");
 
-  // 处理好友申请推送
-  void _handleFriendRequestPush(Map<String, dynamic> response) {
-    try {
-      var pushData = response['body'] ?? response['data'];
-      if (pushData != null) {
-        FriendRequestPushMessage pushMessage = FriendRequestPushMessage.fromJson(pushData);
-        info("👥 好友申请推送: ${pushMessage.pushContent}");
-        AppEvent.onFriendRequestPush.add(pushMessage);
-      }
-    } catch (e) {
-      info("❌ 解析好友申请推送失败: $e");
-    }
-  }
+      // 转换为ChatMessage
+      ChatMessage message = ChatMessage(
+        msgId: pushMsg.msgId,
+        fromUserId: pushMsg.from,
+        toUserId: pushMsg.to,
+        content: pushMsg.content,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(pushMsg.time.toInt()),
+        type: pushMsg.format,
+        chatId: pushMsg.chatId,
+      );
 
-  // 处理好友申请处理结果推送
-  void _handleFriendRequestHandlePush(Map<String, dynamic> response) {
-    try {
-      var pushData = response['body'] ?? response['data'];
-      if (pushData != null) {
-        FriendRequestPushMessage pushMessage = FriendRequestPushMessage.fromJson(pushData);
-        info("👥 好友申请处理结果: ${pushMessage.pushContent}");
-        AppEvent.onFriendRequestPush.add(pushMessage);
-      }
-    } catch (e) {
-      info("❌ 解析好友申请处理结果推送失败: $e");
-    }
-  }
-
-  // 辅助函数：从响应中提取消息ID
-  String _extractMsgId(Map<String, dynamic> response) {
-    if (response['body'] != null && response['body']['msgId'] != null) {
-      return response['body']['msgId'].toString();
-    }
-    return response['msgId']?.toString() ?? '';
-  }
-
-  // 处理C2C发送消息响应
-  void _handleC2CSendResponse(Map<String, dynamic> response) {
-    String msgId = _extractMsgId(response);
-    info("✅ 消息发送成功: $msgId");
-    AppEvent.onMessageStatusChanged.add(
-      MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.serverReceived),
-    );
-    _simulateReceivedAck(response);
-  }
-
-  // 处理接收到的C2C消息
-  void _handleC2CReceiveMessage(Map<String, dynamic> response) {
-    info("📨 收到新消息: $response");
-    try {
-      ChatMessage message = ChatMessage.fromJson(response);
       AppEvent.onMessageReceived.add(message);
-      sendReceivedAck(message.msgId, message.fromUserId, message.toUserId);
+
+      // 自动发送接收确认
+      sendReceivedAck(pushMsg.msgId, pushMsg.from, pushMsg.to, pushMsg.chatId);
       _updateConversationOnNewMessage(message);
-    } catch (e) {
-      info("❌ 处理接收消息失败: $e");
+    } catch (e, stackTrace) {
+      error("❌ 解析 C2CMsgPush 失败: $e\n$stackTrace");
     }
   }
 
-  // 模拟接收方发送接收确认
-  void _simulateReceivedAck(Map<String, dynamic> response) {
-    String msgId = _extractMsgId(response);
-    String originalFromUserId = response['fromUserId'] ?? '';
-    String originalToUserId = response['toUserId'] ?? '';
-    String currentUserId = _currentUserId;
+  /// 处理批量消息ID
+  void _handleBatchMsgIds(ImProtoResponse protoResponse) {
+    try {
+      BatchMsgIdsPush resp = BatchMsgIdsPush.fromBuffer(protoResponse.payload);
+      List<String> msgIdList = resp.msgIds;
 
-    info("🔍 ACK调试信息:");
-    info("  📨 原始消息发送方: $originalFromUserId");
-    info("  📨 原始消息接收方: $originalToUserId");
-    info("  👤 当前用户ID: $currentUserId");
-    info("  🆔 消息ID: $msgId");
+      info("🆔 获取到消息ID，数量: ${msgIdList.length}");
 
-    Future.delayed(Duration(seconds: 1), () {
-      var receivedAckRequest = {
-        'url': HandleType.c2cAckToUserUnread.url.replaceAll(
-          '/response/ack/toUser/unread',
-          '/receivedAck',
-        ),
-        'body': {
-          'msgId': msgId,
-          'fromUserId': currentUserId,
-          'toUserId': originalFromUserId,
-          'msgStatus': 3,
-        },
-      };
-      receivedAckRequest['url'] = 'xzll/im/c2c/receivedAck';
-      _channel?.sink.add(jsonEncode(receivedAckRequest));
-      info("📤 发送未读确认完成: ${jsonEncode(receivedAckRequest)}");
+      if (msgIdList.isNotEmpty) {
+        _msgIds.addAll(msgIdList);
+        info("消息ID已添加到本地缓存，当前缓存数量: ${_msgIds.length}");
+        AppEvent.onMsgIdsReceived.add(msgIdList);
+      }
 
-      Future.delayed(Duration(seconds: 2), () {
-        var readAckRequest = {
-          'url': 'xzll/im/c2c/toUserReadAck', // 该路径未在服务端回执列表里定义，但保持之前逻辑
-          'body': {
-            'msgId': msgId,
-            'fromUserId': currentUserId,
-            'toUserId': originalFromUserId,
-            'msgStatus': 4,
-          },
-        };
-        _channel?.sink.add(jsonEncode(readAckRequest));
-        info("📤 发送已读确认完成: ${jsonEncode(readAckRequest)}");
-        AppEvent.onMessageStatusChanged.add(
-          MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.readed),
-        );
-      });
-    });
+      _isGettingMsgIds = false;
+    } catch (e, stackTrace) {
+      error("❌ 解析 BatchMsgIdsPush 失败: $e\n$stackTrace");
+      _isGettingMsgIds = false;
+    }
   }
 
-  // 处理获取消息ID响应
-  void _handleGetMsgIdsResponse(Map<String, dynamic> response) {
-    List<dynamic> msgIds = response['msgIds'] ?? [];
-    info("🆔 获取到消息ID: ${msgIds.length}个");
-    AppEvent.onMsgIdsReceived.add(msgIds.map((e) => e.toString()).toList());
+  /// 处理ACK消息
+  void _handleAckMessage(ImProtoResponse protoResponse) {
+    try {
+      C2CAckReq ack = C2CAckReq.fromBuffer(protoResponse.payload);
+      int status = ack.status;
+      String statusText;
+      MessageStatus messageStatus;
+
+      if (status == 1) {
+        statusText = "服务器已接收";
+        messageStatus = MessageStatus.serverReceived;
+      } else if (status == 3) {
+        statusText = "对方未读";
+        messageStatus = MessageStatus.unRead;
+      } else if (status == 4) {
+        statusText = "对方已读";
+        messageStatus = MessageStatus.readed;
+      } else {
+        statusText = "未知状态($status)";
+        messageStatus = MessageStatus.serverReceived;
+      }
+
+      info("★★★ [收到ACK] msgId=${ack.msgId}, status=$statusText ★★★");
+      
+      AppEvent.onMessageStatusChanged.add(
+        MessageStatusChangedModel(messageId: ack.msgId, messageStatus: messageStatus),
+      );
+    } catch (e, stackTrace) {
+      error("❌ 解析 ACK 失败: $e\n$stackTrace");
+    }
   }
 
-  // 处理接收确认响应
-  void _handleReceivedAckResponse(Map<String, dynamic> response) {
-    String msgId = _extractMsgId(response);
-    info("📥 消息接收确认: $msgId");
-    AppEvent.onMessageStatusChanged.add(
-      MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.serverReceived),
-    );
+  /// 处理撤回消息
+  void _handleWithdrawMessage(ImProtoResponse protoResponse) {
+    try {
+      C2CWithdrawReq withdraw = C2CWithdrawReq.fromBuffer(protoResponse.payload);
+      info("🗑️ [WITHDRAW] 收到撤回通知, msgId=${withdraw.msgId}, from=${withdraw.from}, to=${withdraw.to}");
+
+      AppEvent.onMessageStatusChanged.add(
+        MessageStatusChangedModel(messageId: withdraw.msgId, messageStatus: MessageStatus.withdraw),
+      );
+    } catch (e, stackTrace) {
+      error("❌ 解析 WITHDRAW 失败: $e\n$stackTrace");
+    }
   }
 
-  // 处理未读确认响应
-  void _handleUnreadAckResponse(Map<String, dynamic> response) {
-    String msgId = _extractMsgId(response);
-    info("📥 消息未读确认: $msgId");
-    AppEvent.onMessageStatusChanged.add(
-      MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.unRead),
-    );
+  /// 处理好友请求
+  void _handleFriendRequest(ImProtoResponse protoResponse) {
+    try {
+      FriendRequestPush request = FriendRequestPush.fromBuffer(protoResponse.payload);
+
+      info("============================================");
+      info("📨 收到好友请求:");
+      info("  申请人: ${request.fromUserName} (${request.fromUserId})");
+      info("  申请消息: ${request.requestMessage}");
+      info("  请求ID: ${request.requestId}");
+      info("  申请人头像: ${request.fromUserAvatar}");
+      info("  状态: ${request.status}");
+      info("  创建时间: ${request.createTime}");
+      info("  推送标题: ${request.pushTitle}");
+      info("  推送内容: ${request.pushContent}");
+      info("============================================");
+
+      // 转换为FriendRequestPushMessage
+      FriendRequestPushMessage pushMessage = FriendRequestPushMessage(
+        pushType: 1, // 1-新的好友申请
+        requestId: request.requestId,
+        fromUserId: request.fromUserId,
+        fromUserName: request.fromUserName,
+        fromUserAvatar: request.fromUserAvatar,
+        toUserId: request.toUserId,
+        requestMessage: request.requestMessage,
+        pushTitle: request.pushTitle,
+        pushContent: request.pushContent,
+        status: request.status,
+        createTime: DateTime.fromMillisecondsSinceEpoch(request.createTime.toInt()),
+      );
+
+      AppEvent.onFriendRequestPush.add(pushMessage);
+    } catch (e, stackTrace) {
+      error("❌ 解析好友请求失败: $e\n$stackTrace");
+    }
   }
 
-  // 处理已读确认响应
-  void _handleReadAckResponse(Map<String, dynamic> response) {
-    String msgId = _extractMsgId(response);
-    info("👁️ 消息已读确认: $msgId");
-    AppEvent.onMessageStatusChanged.add(
-      MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.readed),
-    );
+  /// 处理好友响应
+  void _handleFriendResponse(ImProtoResponse protoResponse) {
+    try {
+      FriendResponsePush response = FriendResponsePush.fromBuffer(protoResponse.payload);
+
+      info("============================================");
+      info("📬 收到好友申请响应:");
+      info("  响应人: ${response.fromUserName} (${response.fromUserId})");
+      info("  请求ID: ${response.requestId}");
+      info("  结果: ${response.status == 1 ? '✅ 已同意' : '❌ 已拒绝'}");
+      info("  推送标题: ${response.pushTitle}");
+      info("  推送内容: ${response.pushContent}");
+      info("============================================");
+
+      // 转换为FriendRequestPushMessage
+      FriendRequestPushMessage pushMessage = FriendRequestPushMessage(
+        pushType: 2, // 2-好友申请处理结果
+        requestId: response.requestId,
+        fromUserId: response.fromUserId,
+        fromUserName: response.fromUserName,
+        fromUserAvatar: response.fromUserAvatar,
+        toUserId: response.toUserId,
+        requestMessage: response.pushContent,
+        pushTitle: response.pushTitle,
+        pushContent: response.pushContent,
+        status: response.status,
+        createTime: DateTime.fromMillisecondsSinceEpoch(response.responseTime.toInt()),
+        handleTime: DateTime.fromMillisecondsSinceEpoch(response.responseTime.toInt()),
+      );
+
+      AppEvent.onFriendRequestPush.add(pushMessage);
+    } catch (e, stackTrace) {
+      error("❌ 解析好友响应失败: $e\n$stackTrace");
+    }
   }
 
-  // 处理撤回消息响应
-  void _handleWithdrawResponse(Map<String, dynamic> response) {
-    String msgId = _extractMsgId(response);
-    info("🗑️ 消息撤回: $msgId");
-    AppEvent.onMessageStatusChanged.add(
-      MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.withdraw),
-    );
+  /// 获取一个可用的消息ID
+  String? _getNextMsgId() {
+    if (_msgIds.isEmpty) {
+      // 如果消息ID用完了，触发获取
+      if (!_isGettingMsgIds) {
+        getMsgIdsFromServer();
+      }
+      return null;
+    }
+    return _msgIds.removeAt(0);
   }
 
   // 发送消息
   Future<bool> sendMessage(ChatMessage message) async {
-    var request = {'url': HandleType.c2cSend.url, 'body': message.toJson()};
     try {
-      _channel!.sink.add(jsonEncode(request));
-      info("📤 发送消息成功: ${jsonEncode(request)}");
+      // 获取消息ID
+      String? msgId = _getNextMsgId();
+      if (msgId == null) {
+        error("❌ 没有可用的消息ID");
+        return false;
+      }
+
+      // 更新消息ID
+      message = message.copyWith(msgId: msgId);
+
+      // 构建 Protobuf C2C 发送消息请求
+      C2CSendReq c2cSendReq = C2CSendReq(
+        msgId: message.msgId,
+        from: message.fromUserId,
+        to: message.toUserId,
+        format: message.type,
+        content: message.content,
+        time: Int64(message.timestamp.millisecondsSinceEpoch),
+        chatId: message.chatId,
+      );
+
+      // 包装为 ImProtoRequest
+      ImProtoRequest protoRequest = ImProtoRequest(
+        type: MsgType.C2C_SEND,
+        payload: c2cSendReq.writeToBuffer(),
+      );
+
+      // 发送 Protobuf 二进制消息
+      Uint8List bytes = protoRequest.writeToBuffer();
+      _channel!.sink.add(bytes);
+      info("📤 发送消息成功: msgId=$msgId, content=${message.content}");
+
+      // 触发消息状态变化事件（发送中）
+      AppEvent.onMessageStatusChanged.add(
+        MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.serverReceived),
+      );
+
       return true;
-    } catch (e) {
-      info("❌ 发送消息失败: $e");
+    } catch (e, stackTrace) {
+      error("❌ 发送消息失败: $e\n$stackTrace");
       return false;
     }
   }
@@ -370,7 +460,7 @@ class WebSocketService extends GetxService {
       targetUserId: message.fromUserId,
       targetUserName: message.fromUserId,
       targetUserAvatar: 'assets/other_headImage.png',
-      lastMsgFormat: message.type,
+      lastMsgFormat: MessageType.fromCode(message.type),
       lastMsgId: message.msgId,
       lastMsgTime: message.timestamp.millisecondsSinceEpoch,
     );
@@ -378,39 +468,111 @@ class WebSocketService extends GetxService {
     AppEvent.onConversationUpdated.add(updatedConversation);
   }
 
-  void sendReceivedAck(String msgId, String fromUserId, String toUserId) {
-    info("📥 发送接收确认...");
-    var request = {
-      'url': 'xzll/im/c2c/receivedAck',
-      'body': {'msgId': msgId, 'fromUserId': fromUserId, 'toUserId': toUserId, 'msgStatus': 3},
-    };
-    _channel?.sink.add(jsonEncode(request));
-    info("📥 发送接收确认完成: ${jsonEncode(request)}");
+  // 发送接收确认
+  void sendReceivedAck(String msgId, String fromUserId, String toUserId, String chatId) {
+    try {
+      info("📥 发送接收确认...");
+
+      // 构建 ACK 请求
+      C2CAckReq ackReq = C2CAckReq(
+        msgId: msgId,
+        from: toUserId, // 注意：发送方和接收方对调
+        to: fromUserId,
+        status: 3, // 3:未读
+        chatId: chatId,
+      );
+
+      // 包装为 ImProtoRequest
+      ImProtoRequest protoRequest = ImProtoRequest(
+        type: MsgType.C2C_ACK,
+        payload: ackReq.writeToBuffer(),
+      );
+
+      // 发送
+      Uint8List bytes = protoRequest.writeToBuffer();
+      _channel?.sink.add(bytes);
+      info("✓ 发送接收确认完成 - status: 未读, msgId: $msgId");
+    } catch (e, stackTrace) {
+      error("❌ 发送接收确认失败: $e\n$stackTrace");
+    }
   }
 
-  void sendReadAck(String msgId, String fromUserId, String toUserId) {
-    info("👁️ 发送已读确认...");
-    var request = {
-      'url': 'xzll/im/c2c/toUserReadAck',
-      'body': {'msgId': msgId, 'fromUserId': fromUserId, 'toUserId': toUserId, 'msgStatus': 4},
-    };
-    _channel?.sink.add(jsonEncode(request));
-    info("👁️ 发送已读确认完成: ${jsonEncode(request)}");
+  // 发送已读确认
+  void sendReadAck(String msgId, String fromUserId, String toUserId, String chatId) {
+    try {
+      info("👁️ 发送已读确认...");
+
+      // 构建 ACK 请求
+      C2CAckReq ackReq = C2CAckReq(
+        msgId: msgId,
+        from: toUserId, // 注意：发送方和接收方对调
+        to: fromUserId,
+        status: 4, // 4:已读
+        chatId: chatId,
+      );
+
+      // 包装为 ImProtoRequest
+      ImProtoRequest protoRequest = ImProtoRequest(
+        type: MsgType.C2C_ACK,
+        payload: ackReq.writeToBuffer(),
+      );
+
+      // 发送
+      Uint8List bytes = protoRequest.writeToBuffer();
+      _channel?.sink.add(bytes);
+      info("✓ 发送已读确认完成 - status: 已读, msgId: $msgId");
+
+      AppEvent.onMessageStatusChanged.add(
+        MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.readed),
+      );
+    } catch (e, stackTrace) {
+      error("❌ 发送已读确认失败: $e\n$stackTrace");
+    }
   }
 
-  void withdrawMessage(String msgId, String fromUserId, String toUserId) {
-    info("🗑️ 撤回消息...");
-    var request = {
-      'url': HandleType.c2cWithdraw.url,
-      'body': {'msgId': msgId, 'fromUserId': fromUserId, 'toUserId': toUserId, 'withdrawFlag': 1},
-    };
-    _channel?.sink.add(jsonEncode(request));
-    info("🗑️ 撤回消息完成: ${jsonEncode(request)}");
+  // 撤回消息
+  void withdrawMessage(String msgId, String fromUserId, String toUserId, String chatId) {
+    try {
+      info("🗑️ 撤回消息...");
+
+      // 构建撤回请求
+      C2CWithdrawReq withdrawReq = C2CWithdrawReq(
+        msgId: msgId,
+        from: fromUserId,
+        to: toUserId,
+        chatId: chatId,
+      );
+
+      // 包装为 ImProtoRequest
+      ImProtoRequest protoRequest = ImProtoRequest(
+        type: MsgType.C2C_WITHDRAW,
+        payload: withdrawReq.writeToBuffer(),
+      );
+
+      // 发送
+      Uint8List bytes = protoRequest.writeToBuffer();
+      _channel?.sink.add(bytes);
+      info("✓ 撤回消息完成: msgId=$msgId");
+    } catch (e, stackTrace) {
+      error("❌ 撤回消息失败: $e\n$stackTrace");
+    }
+  }
+
+  // 请求会话列表（暂时保留，可能需要HTTP API）
+  void requestConversations() {
+    info("📋 请求会话列表...");
+    // TODO: 会话列表可能需要通过HTTP API获取，而不是WebSocket
   }
 
   void disconnect() async {
     info("🔌 断开WebSocket连接");
     await _channel?.sink.close();
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
+  }
+
+  @override
+  void onClose() {
+    _channel?.sink.close();
+    super.onClose();
   }
 }

@@ -89,7 +89,6 @@ class LoginController extends GetxController {
             user: finalUser,
             accessToken: accessToken,
             refreshToken: refreshToken,
-            deviceType: request.deviceType,
           );
 
           // 保存到本地

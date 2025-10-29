@@ -11,7 +11,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => ChatMessage(
   content: json['content'] as String,
   fromUserId: json['fromUserId'] as String,
   toUserId: json['toUserId'] as String,
-  type: $enumDecode(_$MessageTypeEnumMap, json['type']),
+  type: (json['type'] as num).toInt(),
   status:
       $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ??
       MessageStatus.serverReceived,
@@ -24,6 +24,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => ChatMessage(
         json['withdrawStatus'],
       ) ??
       MessageWithdrawStatus.no,
+  chatId: json['chatId'] as String,
 );
 
 Map<String, dynamic> _$ChatMessageToJson(
@@ -33,20 +34,11 @@ Map<String, dynamic> _$ChatMessageToJson(
   'content': instance.content,
   'fromUserId': instance.fromUserId,
   'toUserId': instance.toUserId,
-  'type': _$MessageTypeEnumMap[instance.type]!,
+  'type': instance.type,
   'status': _$MessageStatusEnumMap[instance.status]!,
   'timestamp': instance.timestamp.toIso8601String(),
   'withdrawStatus': _$MessageWithdrawStatusEnumMap[instance.withdrawStatus]!,
-};
-
-const _$MessageTypeEnumMap = {
-  MessageType.unknown: 6,
-  MessageType.text: 0,
-  MessageType.image: 1,
-  MessageType.voice: 2,
-  MessageType.video: 3,
-  MessageType.file: 4,
-  MessageType.location: 5,
+  'chatId': instance.chatId,
 };
 
 const _$MessageStatusEnumMap = {
@@ -55,6 +47,7 @@ const _$MessageStatusEnumMap = {
   MessageStatus.offLine: 2,
   MessageStatus.unRead: 3,
   MessageStatus.readed: 4,
+  MessageStatus.withdraw: 5,
 };
 
 const _$MessageWithdrawStatusEnumMap = {

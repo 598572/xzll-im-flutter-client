@@ -13,4 +13,7 @@ sealed class RouterName {
 
   ///私聊
   static const String chat = '/chat';
+
+  ///搜索用户/添加好友
+  static const String userSearch = '/userSearch';
 }

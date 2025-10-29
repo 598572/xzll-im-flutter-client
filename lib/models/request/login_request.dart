@@ -6,7 +6,7 @@ class LoginRequest {
 
   LoginRequest({required this.username, required this.password, required this.deviceType});
 
-  Map<String, String> toFormData() {
+  Map<String, String> toJson() {
     return {
       'grant_type': 'password',
       'client_id': 'client-app',

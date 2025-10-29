@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:get/instance_manager.dart';
+import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/models/domain/user_search_result.dart';
 import 'package:xzll_im_flutter_client/models/request/friend_request_send_request.dart';
 
 import '../models/domain/conversation.dart';
+import '../router/router_name.dart';
 import '../services/friend_service.dart';
 
 /// 用户搜索页面
@@ -163,6 +164,9 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       targetUserName: user.displayName,
       targetUserAvatar: user.headImage,
     );
+
+    // 导航到聊天页面，传递会话对象
+    Get.toNamed(RouterName.chat, arguments: conversation);
   }
 
   /// 构建用户项

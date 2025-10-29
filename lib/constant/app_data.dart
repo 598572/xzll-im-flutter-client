@@ -15,18 +15,14 @@ class AppData extends GetxService {
   ///RefreshToken
   final RxString refreshToken = ''.obs;
 
-  ///设备类型
-  final RxInt deviceType = 1.obs;
-
   // 计算属性
   bool get isLoggedIn => token.value.isNotEmpty && user.value.id.isNotEmpty;
 
   /// 设置认证状态
-  void setAuthState({User? user, String? accessToken, String? refreshToken, int? deviceType}) {
+  void setAuthState({User? user, String? accessToken, String? refreshToken}) {
     if (user != null) this.user.value = user;
     if (accessToken != null) token.value = accessToken;
     if (refreshToken != null) this.refreshToken.value = refreshToken;
-    if (deviceType != null) this.deviceType.value = deviceType;
   }
 
   /// 清除认证状态
@@ -34,7 +30,6 @@ class AppData extends GetxService {
     user.value = User(id: "", userName: '');
     token.value = '';
     refreshToken.value = '';
-    deviceType.value = 1;
   }
 
   /// 更新用户信息
@@ -62,7 +57,6 @@ class AppData extends GetxService {
       user: user.value.id.isEmpty ? null : user.value,
       accessToken: token.value.isEmpty ? null : token.value,
       refreshToken: refreshToken.value.isEmpty ? null : refreshToken.value,
-      deviceType: deviceType.value,
     );
   }
 

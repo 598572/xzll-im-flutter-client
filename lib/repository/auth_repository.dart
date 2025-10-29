@@ -1,3 +1,5 @@
+import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
+import 'package:xzll_im_flutter_client/models/domain/auth_response.dart';
 import 'package:xzll_im_flutter_client/models/request_model.dart';
 
 abstract class AuthRepository {
@@ -8,13 +10,11 @@ abstract class AuthRepository {
   Future<Map<String, dynamic>> login(LoginRequest request);
 
   /// 验证 Token
-  Future<Map<String, dynamic>> validateToken(String accessToken, int deviceType);
+  Future<ApiResponse> validateToken(String accessToken);
 
   /// 刷新 Token
-  Future<Map<String, dynamic>> refreshToken(String refreshToken, int deviceType);
+  Future<ApiResponse<AuthResponse>> refreshToken(String refreshToken);
 
   /// 用户登出
-  Future<Map<String, dynamic>> logout(String accessToken, String userId, int deviceType);
+  Future<Map<String, dynamic>> logout(String accessToken, String userId);
 }
-
-

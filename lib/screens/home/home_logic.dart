@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
+import 'package:xzll_im_flutter_client/constant/constant.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/services/websocket_service.dart';
@@ -18,7 +19,21 @@ class HomeLogic extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    init();
+    AppEvent.webSocketStatus.listen(_webSocketStatusChanged);
+  }
+
+  @override
+  void onReady() async {
+    super.onReady();
+    await init();
+  }
+
+  void _webSocketStatusChanged(WebSocketStatus status) async {
+    info("WebSocketStatus: ${status.name}");
+    if (status == WebSocketStatus.connected) {
+      await webSocketService.getMsgIdsFromServer();
+      webSocketService.requestConversations();
+    }
   }
 
   void changePage(int index) {
@@ -34,9 +49,5 @@ class HomeLogic extends GetxService {
     await dataBaseService.initDatabase(userId: appData.currentUserId);
     // 初始化服务
     await webSocketService.initWebSocket();
-    if (AppEvent.webSocketStatus.value == WebSocketStatus.connected) {
-      await webSocketService.getMsgIdsFromServer();
-      webSocketService.requestConversations();
-    }
   }
 }

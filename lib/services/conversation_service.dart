@@ -1,13 +1,43 @@
+import 'dart:convert';
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+import 'package:xzll_im_flutter_client/constant/app_config.dart';
+import 'package:xzll_im_flutter_client/constant/app_data.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
+import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
+import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+
 // 会话列表请求模型
 class ConversationListRequest {
-  final String userId;
+  final String? msgId;
+  final String? url;
+  final int? msgCreateTime;
+  final String? chatId;
   final int currentPage;
   final int pageSize;
+  final String userId;
 
-  ConversationListRequest({required this.userId, this.currentPage = 1, this.pageSize = 20});
+  ConversationListRequest({
+    this.msgId,
+    this.url,
+    this.msgCreateTime,
+    this.chatId,
+    this.currentPage = 1,
+    this.pageSize = 20,
+    required this.userId,
+  });
 
   Map<String, dynamic> toJson() {
-    return {'userId': userId, 'currentPage': currentPage, 'pageSize': pageSize};
+    return {
+      'msgId': msgId,
+      'url': url,
+      'msgCreateTime': msgCreateTime,
+      'chatId': chatId,
+      'currentPage': currentPage,
+      'pageSize': pageSize,
+      'userId': userId,
+    };
   }
 }
 
@@ -45,92 +75,67 @@ class PageResponse<T> {
   }
 }
 
-/*
 class ConversationService {
   // 单例模式
   static final ConversationService _instance = ConversationService._internal();
   factory ConversationService() => _instance;
   ConversationService._internal();
 
-  // API基础URL - 通过gateway代理到im-business服务
-  static const String _baseUrl = 'http://120.46.85.43:80'; 
+  // API路径
   static const String _conversationPath = '/im-business/api/chat/lastChatList';
   
-  final AuthService _authService = AuthService();
+  AppData get _appData => Get.find<AppData>();
 
   /// 获取会话列表
-  Future<ApiResponse<PageResponse<Conversation>>> getConversationList({
+  Future<ApiResponse<List<Conversation>>> getConversationList({
     int currentPage = 1,
     int pageSize = 20,
   }) async {
     try {
-      // 检查用户是否已登录
-      if (!_authService.isLoggedIn || _authService.currentUser == null) {
-        return ApiResponse.error('用户未登录');
-      }
-
-      final url = Uri.parse('$_baseUrl$_conversationPath');
+      final url = Uri.parse('${AppConfig.baseUrl}$_conversationPath');
       final request = ConversationListRequest(
-        userId: _authService.currentUser!.id,
+        userId: _appData.user.value.id,
         currentPage: currentPage,
         pageSize: pageSize,
       );
 
-      info('📤 发送会话列表请求: ${jsonEncode(request.toJson())}');
+      info('📤 获取会话列表请求: ${jsonEncode(request.toJson())}');
       info('🔗 请求URL: $url');
-      info('📋 请求头: ${_authService.getAuthHeaders()}');
 
       final response = await http.post(
         url,
-        headers: _authService.getAuthHeaders(),
+        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
-      info('会话列表响应状态: ${response.statusCode}');
-      info('会话列表响应内容: ${response.body}');
+      info('📥 会话列表响应状态: ${response.statusCode}');
+      info('📥 会话列表响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         
-        if (jsonData['code'] == 1 || jsonData['success'] == true) {
-          // 服务端返回的是数组格式，需要转换为分页格式
+        if (jsonData['code'] == 1) {
           final data = jsonData['data'];
           if (data is List) {
-            // 将数组转换为分页格式
-            final conversations = data.map((json) => _parseConversationFromJson(json)).toList();
-            final pageData = PageResponse<Conversation>(
-              records: conversations,
-              total: conversations.length,
-              currentPage: 1,
-              pageSize: conversations.length,
-              hasNext: false,
-            );
-            return ApiResponse.success(pageData);
-          } else if (data is Map) {
-            // 如果服务端返回的是分页格式
-            final pageData = PageResponse.fromJson(
-              Map<String, dynamic>.from(data),
-              (json) => _parseConversationFromJson(json),
-            );
-            return ApiResponse.success(pageData);
+            final conversations = data
+                .map((json) => _parseConversationFromJson(json))
+                .toList();
+            info('✅ 成功获取 ${conversations.length} 个会话');
+            return ApiResponse.success(conversations);
           } else {
             return ApiResponse.error('数据格式不正确');
           }
         } else {
-          return ApiResponse.error(jsonData['msg'] ?? jsonData['message'] ?? '获取会话列表失败');
-        }
-      } else if (response.statusCode == 401) {
-        // Token可能过期，尝试刷新
-        final refreshResult = await _authService.refreshToken();
-        if (refreshResult.success) {
-          // 重新尝试请求
-          return getConversationList(currentPage: currentPage, pageSize: pageSize);
-        } else {
-          return ApiResponse.error('认证失败，请重新登录');
+          return ApiResponse.error(jsonData['msg'] ?? '获取会话列表失败');
         }
       } else {
-        final errorData = jsonDecode(response.body);
-        return ApiResponse.error(errorData['msg'] ?? errorData['message'] ?? '获取会话列表失败，请稍后重试');
+        try {
+          final errorData = jsonDecode(response.body);
+          final errorMsg = errorData['error'] ?? errorData['message'] ?? '获取会话列表失败';
+          return ApiResponse.error('服务器错误(${response.statusCode}): $errorMsg');
+        } catch (e) {
+          return ApiResponse.error('获取会话列表失败(${response.statusCode})');
+        }
       }
     } catch (e) {
       info('获取会话列表异常: $e');
@@ -139,80 +144,25 @@ class ConversationService {
   }
 
   /// 刷新会话列表（重新获取第一页）
-  Future<ApiResponse<PageResponse<Conversation>>> refreshConversationList() async {
+  Future<ApiResponse<List<Conversation>>> refreshConversationList() async {
     return getConversationList(currentPage: 1, pageSize: 20);
-  }
-
-  /// 搜索会话
-  Future<ApiResponse<List<Conversation>>> searchConversations(String keyword) async {
-    try {
-      if (keyword.trim().isEmpty) {
-        return ApiResponse.success([]);
-      }
-
-      // 首先获取所有会话
-      final result = await getConversationList(pageSize: 100); // 获取更多数据用于搜索
-      
-      if (result.success && result.data != null) {
-        // 在本地进行搜索过滤
-        final filteredConversations = result.data!.records
-            .where((conversation) => 
-                conversation.name.toLowerCase().contains(keyword.toLowerCase()) ||
-                conversation.lastMessage.toLowerCase().contains(keyword.toLowerCase()))
-            .toList();
-        
-        return ApiResponse.success(filteredConversations);
-      } else {
-        return ApiResponse.error(result.message ?? '搜索失败');
-      }
-    } catch (e) {
-      info('搜索会话异常: $e');
-      return ApiResponse.error('搜索异常，请稍后重试');
-    }
-  }
-
-  /// 创建新会话（如果服务器支持）
-  Future<ApiResponse<Conversation>> createConversation({
-    required String targetUserId,
-    required String targetUserName,
-    String? targetUserAvatar,
-  }) async {
-    try {
-      // 这里可以实现创建会话的逻辑
-      // 目前先创建一个本地会话对象
-      final newConversation = Conversation(
-        name: targetUserName,
-        headImage: targetUserAvatar ?? 'assets/other_headImage.png',
-        lastMessage: '',
-        timestamp: _formatTimestamp(DateTime.now()),
-        userId: targetUserId,
-        unreadCount: 0,
-      );
-      
-      return ApiResponse.success(newConversation);
-    } catch (e) {
-      info('创建会话异常: $e');
-      return ApiResponse.error('创建会话失败');
-    }
   }
 
   /// 解析会话数据
   Conversation _parseConversationFromJson(Map<String, dynamic> json) {
     info('🔍 解析会话数据: $json');
     
-    // 解析对方用户信息
-    // 尝试多种可能的字段名来获取目标用户ID
-    final targetUserId = json['targetUserId']?.toString() ?? 
-                        json['otherUserId']?.toString() ?? 
-                        json['friendUserId']?.toString() ??
-                        _extractUserIdFromChatId(json['chatId']?.toString());
-    final targetUserName = json['targetUserName'] ?? json['conversationName'] ?? json['name'];
-    final targetUserAvatar = json['targetUserAvatar'] ?? json['headImage'] ?? json['avatar'];
-    
-    // 解析最后消息信息
-    final lastMessageContent = json['lastMessageContent'] ?? json['lastMessage'] ?? '';
-    final lastMsgTime = json['lastMsgTime'] ?? json['lastMessageTime'] ?? json['updateTime'];
+    // 根据接口返回字段解析
+    final chatId = json['chatId']?.toString() ?? '';
+    final userId = json['userId']?.toString() ?? '';
     final lastMsgFormat = json['lastMsgFormat'] ?? 0;
+    final lastMessageContent = json['lastMessageContent'] ?? '';
+    final lastMsgId = json['lastMsgId']?.toString();
+    final lastMsgTime = json['lastMsgTime'];
+    final unReadCount = json['unReadCount'] ?? 0;
+    
+    // 从 chatId 中提取目标用户ID
+    final targetUserId = _extractTargetUserIdFromChatId(chatId, userId);
     
     // 格式化最后消息内容（根据消息类型）
     String formattedLastMessage = _formatLastMessage(lastMessageContent, lastMsgFormat);
@@ -220,36 +170,56 @@ class ConversationService {
     // 格式化时间戳
     String formattedTimestamp = _formatTimestamp(_parseTimestamp(lastMsgTime));
     
-    info('👤 对方信息: $targetUserName (ID: $targetUserId)');
+    info('💬 会话ID: $chatId');
+    info('👤 目标用户ID: $targetUserId');
     info('💬 最后消息: $formattedLastMessage');
     info('⏰ 时间: $formattedTimestamp');
+    info('🔔 未读数: $unReadCount');
     
     return Conversation(
-      name: targetUserName ?? '未知用户',
-      headImage: targetUserAvatar ?? 'assets/other_headImage.png',
+      name: targetUserId ?? '未知用户', // 暂时用ID，后续可以查询用户信息
+      headImage: 'assets/other_headImage.png', // 默认头像，后续可以查询用户信息
       lastMessage: formattedLastMessage,
       timestamp: formattedTimestamp,
-      userId: json['chatId']?.toString() ?? json['userId']?.toString() ?? '',
-      unreadCount: (json['unReadCount'] ?? json['unreadCount'] ?? 0) as int,
+      userId: userId,
+      unreadCount: unReadCount as int,
       targetUserId: targetUserId,
-      targetUserName: targetUserName,
-      targetUserAvatar: targetUserAvatar,
-      lastMsgFormat: lastMsgFormat,
-      lastMsgId: json['lastMsgId']?.toString(),
+      targetUserName: targetUserId, // 暂时用ID
+      targetUserAvatar: null,
+      lastMsgFormat: _convertToMessageType(lastMsgFormat),
+      lastMsgId: lastMsgId,
       lastMsgTime: lastMsgTime,
     );
   }
 
+  /// 将整数转换为 MessageType
+  MessageType _convertToMessageType(int format) {
+    switch (format) {
+      case 0:
+        return MessageType.text;
+      case 1:
+        return MessageType.image;
+      case 2:
+        return MessageType.voice;
+      case 3:
+        return MessageType.video;
+      default:
+        return MessageType.text;
+    }
+  }
+
   /// 从chatId中提取目标用户ID
-  String? _extractUserIdFromChatId(String? chatId) {
-    if (chatId == null || chatId.isEmpty) return null;
+  String? _extractTargetUserIdFromChatId(String chatId, String currentUserId) {
+    if (chatId.isEmpty) return null;
     
     // chatId格式: "100-1-1966369607918948352-1966479049087913984"
-    // 需要提取最后一个用户ID（不是当前用户的ID）
+    // 需要提取不是当前用户的另一个用户ID
     List<String> parts = chatId.split('-');
     if (parts.length >= 4) {
-      // 返回最后一个用户ID
-      return parts.last;
+      final userId1 = parts[2];
+      final userId2 = parts[3];
+      // 返回不是当前用户的那个ID
+      return userId1 == currentUserId ? userId2 : userId1;
     }
     return null;
   }
@@ -323,59 +293,4 @@ class ConversationService {
     }
   }
 
-  /// 模拟会话数据（用于测试，当真实API不可用时）
-  Future<ApiResponse<PageResponse<Conversation>>> getMockConversationList() async {
-    try {
-      // 模拟网络延迟
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      final mockConversations = [
-        Conversation(
-          name: '张三',
-          headImage: 'assets/other_headImage.png',
-          lastMessage: '你好，最近怎么样？',
-          timestamp: '10:30',
-          userId: 'user_001',
-          unreadCount: 2,
-        ),
-        Conversation(
-          name: '李四',
-          headImage: 'assets/other_headImage.png',
-          lastMessage: '明天见面吧',
-          timestamp: '昨天',
-          userId: 'user_002',
-          unreadCount: 0,
-        ),
-        Conversation(
-          name: '王五',
-          headImage: 'assets/other_headImage.png',
-          lastMessage: '收到，谢谢！',
-          timestamp: '星期二',
-          userId: 'user_003',
-          unreadCount: 1,
-        ),
-        Conversation(
-          name: '技术交流群',
-          headImage: 'assets/other_headImage.png',
-          lastMessage: '大家有什么问题可以随时问',
-          timestamp: '3月15日',
-          userId: 'group_001',
-          unreadCount: 5,
-        ),
-      ];
-
-      final pageResponse = PageResponse<Conversation>(
-        records: mockConversations,
-        total: mockConversations.length,
-        currentPage: 1,
-        pageSize: 20,
-        hasNext: false,
-      );
-
-      return ApiResponse.success(pageResponse);
-    } catch (e) {
-      return ApiResponse.error('获取模拟数据失败');
-    }
-  }
 }
-*/

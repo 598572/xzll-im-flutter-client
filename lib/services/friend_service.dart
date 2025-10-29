@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:xzll_im_flutter_client/constant/app_config.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
@@ -16,16 +17,15 @@ class FriendService {
   factory FriendService() => _instance;
   FriendService._internal();
 
-  // API基础URL
-  static const String _baseUrl = 'http://120.46.85.43:80';
-  static const String _businessPath = '/api';
+  // API基础路径（im-business服务）
+  static const String _businessPath = '/im-business/api';
 
   AppData get _appData => Get.find<AppData>();
 
   /// 搜索用户
   Future<ApiResponse<List<UserSearchResult>>> searchUsers(UserSearchRequest request) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/user/search');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/user/search');
       final response = await http.post(
         url,
         headers: _appData.getAuthHeaders(),
@@ -39,7 +39,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           List<dynamic> data = jsonData['data'] ?? [];
           List<UserSearchResult> users = data
               .map((item) => UserSearchResult.fromJson(item))
@@ -60,7 +60,7 @@ class FriendService {
   /// 发送好友申请
   Future<ApiResponse<String>> sendFriendRequest(FriendRequestSendRequest request) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/friend/request/send');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/friend/request/send');
       final response = await http.post(
         url,
         headers: _appData.getAuthHeaders(),
@@ -74,7 +74,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           String requestId = jsonData['data']?.toString() ?? '';
           return ApiResponse.success(requestId);
         } else {
@@ -92,7 +92,7 @@ class FriendService {
   /// 处理好友申请
   Future<ApiResponse<bool>> handleFriendRequest(FriendRequestHandleRequest request) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/friend/request/handle');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/friend/request/handle');
       final response = await http.post(
         url,
         headers: _appData.getAuthHeaders(),
@@ -106,7 +106,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           bool result = jsonData['data'] ?? false;
           return ApiResponse.success(result);
         } else {
@@ -126,7 +126,7 @@ class FriendService {
     FriendRequestListRequest request,
   ) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/friend/request/list');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/friend/request/list');
       final response = await http.post(
         url,
         headers: _appData.getAuthHeaders(),
@@ -140,7 +140,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           List<dynamic> data = jsonData['data'] ?? [];
           List<FriendRequest> requests = data.map((item) => FriendRequest.fromJson(item)).toList();
           return ApiResponse.success(requests);
@@ -159,7 +159,7 @@ class FriendService {
   /// 获取好友列表
   Future<ApiResponse<List<Friend>>> getFriendList(FriendListRequest request) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/friend/list');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/friend/list');
       final response = await http.post(
         url,
         headers: _appData.getAuthHeaders(),
@@ -173,7 +173,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           List<dynamic> data = jsonData['data'] ?? [];
           List<Friend> friends = data.map((item) => Friend.fromJson(item)).toList();
           return ApiResponse.success(friends);
@@ -192,7 +192,7 @@ class FriendService {
   /// 删除好友
   Future<ApiResponse<bool>> deleteFriend(String userId, String friendId) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/friend/delete');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/friend/delete');
       final requestBody = {'userId': userId, 'friendId': friendId};
 
       final response = await http.post(
@@ -208,7 +208,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           bool result = jsonData['data'] ?? false;
           return ApiResponse.success(result);
         } else {
@@ -226,7 +226,7 @@ class FriendService {
   /// 拉黑/取消拉黑好友
   Future<ApiResponse<bool>> blockFriend(String userId, String friendId, int blackFlag) async {
     try {
-      final url = Uri.parse('$_baseUrl$_businessPath/friend/block');
+      final url = Uri.parse('${AppConfig.baseUrl}$_businessPath/friend/block');
       final requestBody = {'userId': userId, 'friendId': friendId, 'blackFlag': blackFlag};
 
       final response = await http.post(
@@ -242,7 +242,7 @@ class FriendService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        if (jsonData['code'] == 200) {
+        if (jsonData['code'] == 1) {
           bool result = jsonData['data'] ?? false;
           return ApiResponse.success(result);
         } else {
