@@ -63,5 +63,6 @@ class SplashLogic extends GetxController {
       // await AuthTools.clearAuthState();
       Get.offAllNamed(RouterName.login);
     }
+
   }
 }

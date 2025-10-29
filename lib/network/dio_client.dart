@@ -11,8 +11,8 @@ class DioClient {
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConfig.baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: Duration(seconds: AppConfig.connectionTimeout),
+        receiveTimeout: Duration(seconds: AppConfig.receiveTimeout),
       ),
     );
 
