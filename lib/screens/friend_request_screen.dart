@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/instance_manager.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
+import 'package:xzll_im_flutter_client/constant/app_event.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request.dart';
+import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
 import '../services/friend_service.dart';
 import '../utils/time_utils.dart';
 
@@ -25,6 +29,9 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
   String _errorMessageReceived = '';
   String _errorMessageSent = '';
   bool _hasChanges = false; // 标记是否有操作变化
+  
+  /// 好友申请推送事件订阅
+  StreamSubscription? _friendRequestSubscription;
 
   @override
   void initState() {
@@ -32,11 +39,13 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
     _tabController = TabController(length: 2, vsync: this);
     _loadReceivedRequests();
     _loadSentRequests();
+    _setupFriendRequestListener();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _friendRequestSubscription?.cancel();
     super.dispose();
   }
 
@@ -598,5 +607,22 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
         return _buildSentRequestItem(_sentRequests[index]);
       },
     );
+  }
+
+  /// 设置好友申请推送监听
+  void _setupFriendRequestListener() {
+    _friendRequestSubscription = AppEvent.onFriendRequestPush.stream.listen((FriendRequestPushMessage pushMessage) {
+      info("🔔 好友申请页面收到推送: ${pushMessage.pushContent}");
+      
+      // 如果是新的好友申请，刷新收到的申请列表
+      if (pushMessage.isNewRequest) {
+        info("🔄 刷新收到的好友申请列表");
+        _loadReceivedRequests();
+      } else {
+        // 如果是好友申请处理结果，刷新发送的申请列表
+        info("🔄 刷新发送的好友申请列表");
+        _loadSentRequests();
+      }
+    });
   }
 }

@@ -16,4 +16,10 @@ sealed class RouterName {
 
   ///搜索用户/添加好友
   static const String userSearch = '/userSearch';
+
+  ///好友申请页面
+  static const String friendRequest = '/friendRequest';
+
+  ///新的朋友（好友请求列表）
+  static const String newFriends = '/newFriends';
 }

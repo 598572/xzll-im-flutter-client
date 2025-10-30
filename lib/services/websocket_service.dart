@@ -77,6 +77,7 @@ class WebSocketService extends GetxService {
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
       
       // 连接成功后立即获取消息ID
+      info("🔗 WebSocket连接成功，500ms后开始获取消息ID");
       await Future.delayed(Duration(milliseconds: 500));
       getMsgIdsFromServer();
     } catch (e) {
@@ -117,13 +118,21 @@ class WebSocketService extends GetxService {
 
   // 从服务器获取消息ID
   Future<void> getMsgIdsFromServer() async {
+    info("📞 开始获取消息ID - WebSocket状态: ${_channel != null ? '已连接' : '未连接'}");
+    
     if (_isGettingMsgIds) {
       info("⏳ 正在获取消息ID中...");
       return;
     }
 
+    if (_channel == null) {
+      error("❌ WebSocket未连接，无法获取消息ID");
+      return;
+    }
+
     try {
       _isGettingMsgIds = true;
+      info("🔄 设置获取状态为true，当前用户ID: $_currentUserId");
       
       // 构建获取消息ID请求
       GetBatchMsgIdsReq getBatchMsgIdsReq = GetBatchMsgIdsReq(
@@ -138,8 +147,8 @@ class WebSocketService extends GetxService {
 
       // 发送 Protobuf 二进制消息
       Uint8List bytes = protoRequest.writeToBuffer();
-      _channel?.sink.add(bytes);
-      info("📤 发送获取消息ID请求");
+      _channel!.sink.add(bytes);
+      info("📤 发送获取消息ID请求成功 - 请求类型: ${protoRequest.type.name}");
     } catch (e) {
       error("❌ 获取消息ID失败: $e");
       _isGettingMsgIds = false;
@@ -235,6 +244,7 @@ class WebSocketService extends GetxService {
         timestamp: DateTime.fromMillisecondsSinceEpoch(pushMsg.time.toInt()),
         type: pushMsg.format,
         chatId: pushMsg.chatId,
+        status: MessageStatus.unRead, // 接收到的消息显示为未读状态
       );
 
       AppEvent.onMessageReceived.add(message);
@@ -250,18 +260,26 @@ class WebSocketService extends GetxService {
   /// 处理批量消息ID
   void _handleBatchMsgIds(ImProtoResponse protoResponse) {
     try {
+      info("📥 开始处理批量消息ID响应");
       BatchMsgIdsPush resp = BatchMsgIdsPush.fromBuffer(protoResponse.payload);
       List<String> msgIdList = resp.msgIds;
 
       info("🆔 获取到消息ID，数量: ${msgIdList.length}");
+      if (msgIdList.isNotEmpty) {
+        info("📝 消息ID列表前5个: ${msgIdList.take(5).toList()}");
+      }
 
       if (msgIdList.isNotEmpty) {
+        int oldCount = _msgIds.length;
         _msgIds.addAll(msgIdList);
-        info("消息ID已添加到本地缓存，当前缓存数量: ${_msgIds.length}");
+        info("✅ 消息ID已添加到本地缓存，原数量: $oldCount, 新增: ${msgIdList.length}, 总数量: ${_msgIds.length}");
         AppEvent.onMsgIdsReceived.add(msgIdList);
+      } else {
+        waring("⚠️ 服务器返回的消息ID列表为空");
       }
 
       _isGettingMsgIds = false;
+      info("🔓 消息ID获取完成，已释放获取锁");
     } catch (e, stackTrace) {
       error("❌ 解析 BatchMsgIdsPush 失败: $e\n$stackTrace");
       _isGettingMsgIds = false;
@@ -277,8 +295,12 @@ class WebSocketService extends GetxService {
       MessageStatus messageStatus;
 
       if (status == 1) {
-        statusText = "服务器已接收";
-        messageStatus = MessageStatus.serverReceived;
+        // 服务端status=1表示"到达服务器"，客户端直接显示"未读"（隐藏服务器ACK状态）
+        statusText = "服务器已确认(显示未读)";
+        messageStatus = MessageStatus.unRead;
+      } else if (status == 2) {
+        statusText = "对方离线";
+        messageStatus = MessageStatus.unRead; // 按服务端设计，离线也显示为未读
       } else if (status == 3) {
         statusText = "对方未读";
         messageStatus = MessageStatus.unRead;
@@ -287,10 +309,10 @@ class WebSocketService extends GetxService {
         messageStatus = MessageStatus.readed;
       } else {
         statusText = "未知状态($status)";
-        messageStatus = MessageStatus.serverReceived;
+        messageStatus = MessageStatus.unRead; // 未知状态默认显示未读
       }
 
-      info("★★★ [收到ACK] msgId=${ack.msgId}, status=$statusText ★★★");
+      info("★★★ [收到ACK] msgId=${ack.msgId}, 服务端状态=$statusText, 客户端显示=${messageStatus.desc} ★★★");
       
       AppEvent.onMessageStatusChanged.add(
         MessageStatusChangedModel(messageId: ack.msgId, messageStatus: messageStatus),
@@ -305,6 +327,7 @@ class WebSocketService extends GetxService {
     try {
       C2CWithdrawReq withdraw = C2CWithdrawReq.fromBuffer(protoResponse.payload);
       info("🗑️ [WITHDRAW] 收到撤回通知, msgId=${withdraw.msgId}, from=${withdraw.from}, to=${withdraw.to}");
+      info("🗑️ 设置消息状态为: ${MessageStatus.withdraw.desc}");
 
       AppEvent.onMessageStatusChanged.add(
         MessageStatusChangedModel(messageId: withdraw.msgId, messageStatus: MessageStatus.withdraw),
@@ -390,24 +413,43 @@ class WebSocketService extends GetxService {
 
   /// 获取一个可用的消息ID
   String? _getNextMsgId() {
+    info("🔍 获取消息ID - 缓存数量: ${_msgIds.length}, 正在获取中: $_isGettingMsgIds");
+    
     if (_msgIds.isEmpty) {
       // 如果消息ID用完了，触发获取
       if (!_isGettingMsgIds) {
+        info("📥 消息ID缓存为空，开始获取新的消息ID");
         getMsgIdsFromServer();
+      } else {
+        info("⏳ 正在获取消息ID中，请稍候...");
       }
       return null;
     }
-    return _msgIds.removeAt(0);
+    
+    String msgId = _msgIds.removeAt(0);
+    info("✅ 获取到消息ID: $msgId, 剩余数量: ${_msgIds.length}");
+    return msgId;
   }
 
   // 发送消息
-  Future<bool> sendMessage(ChatMessage message) async {
+  Future<ChatMessage?> sendMessage(ChatMessage message) async {
     try {
-      // 获取消息ID
+      // 获取消息ID，如果失败则重试
       String? msgId = _getNextMsgId();
       if (msgId == null) {
-        error("❌ 没有可用的消息ID");
-        return false;
+        error("❌ 没有可用的消息ID，尝试重新获取...");
+        // 重置获取状态，强制重新获取
+        _isGettingMsgIds = false;
+        getMsgIdsFromServer();
+        
+        // 等待一小段时间后再次尝试
+        await Future.delayed(Duration(milliseconds: 100));
+        msgId = _getNextMsgId();
+        
+        if (msgId == null) {
+          error("❌ 重试获取消息ID失败");
+          return null;
+        }
       }
 
       // 更新消息ID
@@ -436,14 +478,15 @@ class WebSocketService extends GetxService {
       info("📤 发送消息成功: msgId=$msgId, content=${message.content}");
 
       // 触发消息状态变化事件（发送中）
+      info("📤 设置消息状态为: ${MessageStatus.sending.desc}");
       AppEvent.onMessageStatusChanged.add(
-        MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.serverReceived),
+        MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.sending),
       );
 
-      return true;
+      return message; // 返回更新后的消息对象
     } catch (e, stackTrace) {
       error("❌ 发送消息失败: $e\n$stackTrace");
-      return false;
+      return null;
     }
   }
 
@@ -521,6 +564,7 @@ class WebSocketService extends GetxService {
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel?.sink.add(bytes);
       info("✓ 发送已读确认完成 - status: 已读, msgId: $msgId");
+      info("👁️ 设置消息状态为: ${MessageStatus.readed.desc}");
 
       AppEvent.onMessageStatusChanged.add(
         MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.readed),
@@ -562,6 +606,27 @@ class WebSocketService extends GetxService {
   void requestConversations() {
     info("📋 请求会话列表...");
     // TODO: 会话列表可能需要通过HTTP API获取，而不是WebSocket
+  }
+
+  /// 检查消息ID状态（用于调试）
+  void checkMsgIdStatus() {
+    info("========== 消息ID状态检查 ==========");
+    info("📊 WebSocket连接状态: ${_channel != null ? '已连接' : '未连接'}");
+    info("📊 当前缓存消息ID数量: ${_msgIds.length}");
+    info("📊 正在获取消息ID: $_isGettingMsgIds");
+    info("📊 当前用户ID: $_currentUserId");
+    info("📊 WebSocket状态: ${AppEvent.webSocketStatus.value}");
+    if (_msgIds.isNotEmpty) {
+      info("📊 缓存中的前3个消息ID: ${_msgIds.take(3).toList()}");
+    }
+    info("=====================================");
+  }
+
+  /// 手动触发获取消息ID（用于调试）
+  void forceGetMsgIds() {
+    info("🔄 手动强制获取消息ID");
+    _isGettingMsgIds = false; // 重置状态
+    getMsgIdsFromServer();
   }
 
   void disconnect() async {

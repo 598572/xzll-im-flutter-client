@@ -14,7 +14,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => ChatMessage(
   type: (json['type'] as num).toInt(),
   status:
       $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ??
-      MessageStatus.serverReceived,
+      MessageStatus.sending,
   timestamp: json['timestamp'] == null
       ? DateTime.timestamp()
       : DateTime.parse(json['timestamp'] as String),
@@ -43,6 +43,7 @@ Map<String, dynamic> _$ChatMessageToJson(
 
 const _$MessageStatusEnumMap = {
   MessageStatus.fail: -1,
+  MessageStatus.sending: 0,
   MessageStatus.serverReceived: 1,
   MessageStatus.offLine: 2,
   MessageStatus.unRead: 3,

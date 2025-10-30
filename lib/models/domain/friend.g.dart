@@ -8,9 +8,9 @@ part of 'friend.dart';
 
 Friend _$FriendFromJson(Map<String, dynamic> json) => Friend(
   friendId: json['friendId'] as String,
-  friendUserName: json['friendUserName'] as String?,
+  friendName: json['friendName'] as String?,
   friendFullName: json['friendFullName'] as String?,
-  friendHeadImage: json['friendHeadImage'] as String?,
+  friendAvatar: json['friendAvatar'] as String?,
   friendSex: (json['friendSex'] as num?)?.toInt(),
   blackFlag: json['blackFlag'] as bool?,
   createTime: json['createTime'] == null
@@ -20,9 +20,9 @@ Friend _$FriendFromJson(Map<String, dynamic> json) => Friend(
 
 Map<String, dynamic> _$FriendToJson(Friend instance) => <String, dynamic>{
   'friendId': instance.friendId,
-  'friendUserName': instance.friendUserName,
+  'friendName': instance.friendName,
   'friendFullName': instance.friendFullName,
-  'friendHeadImage': instance.friendHeadImage,
+  'friendAvatar': instance.friendAvatar,
   'friendSex': instance.friendSex,
   'blackFlag': instance.blackFlag,
   'createTime': instance.createTime?.toIso8601String(),

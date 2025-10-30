@@ -38,4 +38,35 @@ class Conversation {
   factory Conversation.fromJson(Map<String, dynamic> json) => _$ConversationFromJson(json);
 
   Map<String, dynamic> toJson() => _$ConversationToJson(this);
+
+  // 添加copyWith方法
+  Conversation copyWith({
+    String? name,
+    String? headImage,
+    String? lastMessage,
+    String? timestamp,
+    String? userId,
+    int? unreadCount,
+    String? targetUserId,
+    String? targetUserName,
+    String? targetUserAvatar,
+    MessageType? lastMsgFormat,
+    String? lastMsgId,
+    int? lastMsgTime,
+  }) {
+    return Conversation(
+      name: name ?? this.name,
+      headImage: headImage ?? this.headImage,
+      lastMessage: lastMessage ?? this.lastMessage,
+      timestamp: timestamp ?? this.timestamp,
+      userId: userId ?? this.userId,
+      unreadCount: unreadCount ?? this.unreadCount,
+      targetUserId: targetUserId ?? this.targetUserId,
+      targetUserName: targetUserName ?? this.targetUserName,
+      targetUserAvatar: targetUserAvatar ?? this.targetUserAvatar,
+      lastMsgFormat: lastMsgFormat ?? this.lastMsgFormat,
+      lastMsgId: lastMsgId ?? this.lastMsgId,
+      lastMsgTime: lastMsgTime ?? this.lastMsgTime,
+    );
+  }
 }

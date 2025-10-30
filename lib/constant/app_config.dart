@@ -39,7 +39,7 @@ sealed class AppConfig {
   
   /// 当前环境（开发、测试、生产）
   /// 临时使用远程服务器，本地开发网络问题解决后改回 development
-  static const AppEnvironment environment = AppEnvironment.dev;
+  static const AppEnvironment environment = AppEnvironment.test;
   
   /// 是否启用调试日志
   static bool get enableDebugLog => _serverConfig.enableDebugLog;

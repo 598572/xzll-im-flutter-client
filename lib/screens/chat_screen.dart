@@ -65,7 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _setupMessageStatusListener() {
     // 监听消息状态变化
     WebSocketService.instance.onMessageStatusChanged = (String msgId, MessageStatus status) {
-      info("📊 消息状态更新: $msgId -> $status");
+      info("📊 消息状态更新: $msgId -> ${status.desc}");
       // 检查Widget是否还在树中
       if (mounted) {
         setState(() {
@@ -138,7 +138,7 @@ class _ChatScreenState extends State<ChatScreen> {
       fromUserId: currentUserId,
       toUserId: targetUserId,
       type: MessageType.text,
-      status: MessageStatus.serverReceived, // 使用serverReceived作为发送中状态
+      status: MessageStatus.sending, // 使用sending作为发送中状态
       timestamp: DateTime.now(),
     );
 

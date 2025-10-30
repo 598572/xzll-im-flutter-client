@@ -70,9 +70,10 @@ class ServerConfig {
     this.webSocketRetryCount = 3,
   });
   
-  /// 开发环境配置
+  /// 个人开发环境配置（适用于在本机启动后台所有服务）
   factory ServerConfig.development() => const ServerConfig(
-    host: '192.168.177.218',         // 本机ip
+    host: '192.168.177.218',         // 本机ip 热点时使用此ip
+    // host: '10.66.253.227',         // 连wifi
     httpPort: 8081,           // HTTP接口（gateway）端口
     wsPort: 10001,            // WebSocket端口
     useHttps: false,
@@ -87,7 +88,7 @@ class ServerConfig {
     host: '120.46.85.43',
     httpPort: 80,          // nginx HTTP接口端口
     wsPort: 80,            // nginx WebSocket端口
-    useHttps: true,
+    useHttps: false,
     enableDebugLog: true,
     connectionTimeout: 20,
     receiveTimeout: 20,
@@ -96,10 +97,10 @@ class ServerConfig {
   
   /// 生产环境配置
   factory ServerConfig.production() => const ServerConfig(
-    host: 'api.example.com',
-    httpPort: 443,
-    wsPort: 443,
-    useHttps: true,
+    host: '192.168.1.150',
+    httpPort: 8081,
+    wsPort: 10001,
+    useHttps: false,
     enableDebugLog: false,
     connectionTimeout: 15,
     receiveTimeout: 15,

@@ -23,7 +23,7 @@ class ChatMessage {
     required this.fromUserId,
     required this.toUserId,
     required this.type,
-    this.status = MessageStatus.serverReceived,
+    this.status = MessageStatus.sending, // 默认为发送中状态
     required this.timestamp,
     this.withdrawStatus = MessageWithdrawStatus.no,
     required this.chatId,

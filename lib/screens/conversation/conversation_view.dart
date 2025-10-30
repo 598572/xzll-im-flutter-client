@@ -147,10 +147,7 @@ class ConversationView extends GetView<ConversationLogic> {
                     ],
                   ],
                 ),
-                onTap: () {
-                  // TODO: 跳转到聊天页面
-                  Get.snackbar('提示', '点击了会话: ${conversation.targetUserName}');
-                },
+                onTap: () => controller.openChat(conversation),
               );
             },
             itemCount: controller.conversationList.length,
