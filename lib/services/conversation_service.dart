@@ -189,6 +189,7 @@ class ConversationService {
       lastMsgFormat: _convertToMessageType(lastMsgFormat),
       lastMsgId: lastMsgId,
       lastMsgTime: lastMsgTime,
+      chatId: chatId, // 使用从服务端返回的chatId
     );
   }
 

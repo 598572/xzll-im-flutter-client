@@ -1,123 +1,208 @@
 import 'package:flutter/material.dart';
-import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
+import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
+import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
 
-import '../models/domain/chat_message.dart';
-import '../utils/time_utils.dart';
-
-// 消息气泡组件
+/// 消息气泡组件
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
+  final VoidCallback? onRetry;
 
-  const MessageBubble({super.key, required this.message, required this.isMe});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.isMe,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      margin: EdgeInsets.only(
+        top: 4,
+        bottom: 4,
+        left: isMe ? 80 : 16,
+        right: isMe ? 16 : 80,
+      ),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe) ...[
-            CircleAvatar(backgroundImage: AssetImage('assets/other_headImage.png'), radius: 20),
-            SizedBox(width: 8),
+            _buildAvatar(),
+            const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isMe ? Colors.purple[300] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.content,
-                    style: TextStyle(color: isMe ? Colors.white : Colors.black, fontSize: 16),
-                  ),
-                  SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        TimeUtils.formatTime(message.timestamp),
-                        style: TextStyle(
-                          color: isMe ? Colors.white70 : Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (isMe) ...[SizedBox(width: 4), _buildMessageStatus(message.status)],
-                    ],
-                  ),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                _buildMessageBubble(context),
+                const SizedBox(height: 2),
+                _buildMessageInfo(),
+              ],
             ),
           ),
           if (isMe) ...[
-            SizedBox(width: 8),
-            CircleAvatar(backgroundImage: AssetImage('assets/my_headImage.png'), radius: 20),
+            const SizedBox(width: 8),
+            _buildAvatar(),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildMessageStatus(MessageStatus status) {
-    Widget statusWidget;
+  Widget _buildAvatar() {
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: isMe ? Colors.blue[100] : Colors.grey[300],
+      child: Text(
+        isMe ? '我' : '对',
+        style: TextStyle(
+          fontSize: 12,
+          color: isMe ? Colors.blue[700] : Colors.grey[700],
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 
-    switch (status) {
-      case MessageStatus.fail:
-        // 发送失败：感叹号，红色
-        statusWidget = Icon(Icons.error_outline, size: 12, color: Colors.red[500]);
-        break;
-      case MessageStatus.serverReceived:
-        // 消息已送达服务器：小圆点加载动画，灰色（发送中状态）
-        statusWidget = SizedBox(
+  Widget _buildMessageBubble(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        if (message.status == MessageStatus.fail && onRetry != null) {
+          onRetry!();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.blue[500] : Colors.grey[200],
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isMe ? 18 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 18),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                message.content,
+                style: TextStyle(
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (isMe && message.status == MessageStatus.fail) ...[
+              const SizedBox(width: 8),
+              Icon(
+                Icons.error_outline,
+                color: Colors.red.shade300,
+                size: 16,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageInfo() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _formatTime(message.timestamp),
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[600],
+          ),
+        ),
+        if (isMe) ...[
+          const SizedBox(width: 4),
+          _buildMessageStatus(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMessageStatus() {
+    switch (message.status) {
+      case MessageStatus.sending:
+        // 发送中状态 - 显示转圈
+        return const SizedBox(
           width: 12,
           height: 12,
           child: CircularProgressIndicator(
             strokeWidth: 1.5,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
           ),
         );
-        break;
+      case MessageStatus.serverReceived:
       case MessageStatus.offLine:
-        // 离线：单勾，灰色
-        statusWidget = Icon(Icons.check, size: 12, color: Colors.grey[500]);
-        break;
       case MessageStatus.unRead:
-        // 未读：双勾，灰色
-        statusWidget = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check, size: 10, color: Colors.grey[500]),
-            Icon(Icons.check, size: 10, color: Colors.grey[500]),
-          ],
+        // 服务器已接收、离线、未读状态 - 显示中文"未读"
+        return Text(
+          "未读",
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[600],
+          ),
         );
-        break;
       case MessageStatus.readed:
-        // 已读：双勾，蓝色
-        statusWidget = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check, size: 10, color: Colors.blue[600]),
-            Icon(Icons.check, size: 10, color: Colors.blue[600]),
-          ],
+        // 已读状态 - 显示中文"已读"
+        return Text(
+          "已读",
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.blue[600],
+          ),
         );
-        break;
-      case MessageStatus.withdraw:
-        return SizedBox();
+      case MessageStatus.fail:
+        // 发送失败状态 - 显示中文"失败"和重试按钮
+        return GestureDetector(
+          onTap: onRetry,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "失败",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.red[600],
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                Icons.refresh,
+                size: 12,
+                color: Colors.red[600],
+              ),
+            ],
+          ),
+        );
+      default:
+        return const SizedBox.shrink();
     }
+  }
 
-    return Container(margin: EdgeInsets.only(left: 4), child: statusWidget);
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    if (messageDate == today) {
+      // 今天，只显示时间
+      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate == today.subtract(const Duration(days: 1))) {
+      // 昨天
+      return '昨天 ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else {
+      // 其他日期
+      return '${dateTime.month}/${dateTime.day} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    }
   }
 }

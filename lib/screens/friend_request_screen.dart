@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/instance_manager.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
+import 'package:xzll_im_flutter_client/constant/app_event.dart';
+import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request.dart';
+import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
+import 'package:xzll_im_flutter_client/screens/contacts/contacts_logic.dart';
 import '../services/friend_service.dart';
 import '../utils/time_utils.dart';
 
@@ -25,6 +30,9 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
   String _errorMessageReceived = '';
   String _errorMessageSent = '';
   bool _hasChanges = false; // 标记是否有操作变化
+  
+  /// 好友申请推送事件订阅
+  StreamSubscription? _friendRequestSubscription;
 
   @override
   void initState() {
@@ -32,11 +40,16 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
     _tabController = TabController(length: 2, vsync: this);
     _loadReceivedRequests();
     _loadSentRequests();
+    _setupFriendRequestListener();
+    
+    // 用户进入好友申请页面，清除通讯录的未读数量
+    _clearUnreadCountInContacts();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _friendRequestSubscription?.cancel();
     super.dispose();
   }
 
@@ -598,5 +611,37 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
         return _buildSentRequestItem(_sentRequests[index]);
       },
     );
+  }
+
+  /// 设置好友申请推送监听
+  void _setupFriendRequestListener() {
+    _friendRequestSubscription = AppEvent.onFriendRequestPush.stream.listen((FriendRequestPushMessage pushMessage) {
+      info("🔔 好友申请页面收到推送: ${pushMessage.pushContent}");
+      
+      // 如果是新的好友申请，刷新收到的申请列表
+      if (pushMessage.isNewRequest) {
+        info("🔄 刷新收到的好友申请列表");
+        _loadReceivedRequests();
+      } else {
+        // 如果是好友申请处理结果，刷新发送的申请列表
+        info("🔄 刷新发送的好友申请列表");
+        _loadSentRequests();
+      }
+    });
+  }
+
+  /// 清除通讯录中的未读数量
+  void _clearUnreadCountInContacts() {
+    // 延迟执行，确保页面加载完成
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        final contactsLogic = Get.find<ContactsLogic>();
+        contactsLogic.unreadFriendRequestCount.value = 0;
+        info("✅ 已清除通讯录未读好友申请数量");
+      } catch (e) {
+        info("⚠️ 清除通讯录未读数量失败: $e");
+        // 可能ContactsLogic还没有初始化，忽略错误
+      }
+    });
   }
 }

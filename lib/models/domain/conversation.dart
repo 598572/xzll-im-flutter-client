@@ -19,6 +19,7 @@ class Conversation {
   final MessageType? lastMsgFormat; // 最后消息格式 (0:文本, 1:图片, 2:语音等)
   final String? lastMsgId; // 最后消息ID
   final int? lastMsgTime; // 最后消息时间戳
+  final String? chatId; // 会话ID（从服务端返回）
 
   Conversation({
     required this.name,
@@ -33,9 +34,43 @@ class Conversation {
     this.lastMsgFormat,
     this.lastMsgId,
     this.lastMsgTime,
+    this.chatId,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) => _$ConversationFromJson(json);
 
   Map<String, dynamic> toJson() => _$ConversationToJson(this);
+
+  // 添加copyWith方法
+  Conversation copyWith({
+    String? name,
+    String? headImage,
+    String? lastMessage,
+    String? timestamp,
+    String? userId,
+    int? unreadCount,
+    String? targetUserId,
+    String? targetUserName,
+    String? targetUserAvatar,
+    MessageType? lastMsgFormat,
+    String? lastMsgId,
+    int? lastMsgTime,
+    String? chatId,
+  }) {
+    return Conversation(
+      name: name ?? this.name,
+      headImage: headImage ?? this.headImage,
+      lastMessage: lastMessage ?? this.lastMessage,
+      timestamp: timestamp ?? this.timestamp,
+      userId: userId ?? this.userId,
+      unreadCount: unreadCount ?? this.unreadCount,
+      targetUserId: targetUserId ?? this.targetUserId,
+      targetUserName: targetUserName ?? this.targetUserName,
+      targetUserAvatar: targetUserAvatar ?? this.targetUserAvatar,
+      lastMsgFormat: lastMsgFormat ?? this.lastMsgFormat,
+      lastMsgId: lastMsgId ?? this.lastMsgId,
+      lastMsgTime: lastMsgTime ?? this.lastMsgTime,
+      chatId: chatId ?? this.chatId,
+    );
+  }
 }

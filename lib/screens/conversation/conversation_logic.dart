@@ -89,4 +89,18 @@ class ConversationLogic extends GetxController {
     // TODO: 实现扫一扫功能
     Get.snackbar('提示', '扫一扫功能开发中...');
   }
+
+  /// 打开聊天界面
+  void openChat(Conversation conversation) {
+    info('🚀 准备打开聊天界面: ${conversation.targetUserName}');
+    
+    // 检查必要参数
+    if (conversation.targetUserId == null || conversation.targetUserId!.isEmpty) {
+      Get.snackbar('错误', '无法打开聊天，缺少目标用户信息');
+      return;
+    }
+    
+    // 跳转到聊天界面，并传递会话参数
+    Get.toNamed(RouterName.chat, arguments: conversation);
+  }
 }

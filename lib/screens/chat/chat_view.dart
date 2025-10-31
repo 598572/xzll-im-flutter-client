@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/screens/chat/chat_logic.dart';
+import 'package:xzll_im_flutter_client/widgets/message_bubble.dart';
 
 class ChatView extends GetView<ChatLogic> {
   const ChatView({super.key});
@@ -14,7 +15,7 @@ class ChatView extends GetView<ChatLogic> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.purple.withOpacity(0.1),
+              backgroundColor: Colors.purple.withValues(alpha: 0.1),
               backgroundImage: controller.conversation.headImage.startsWith('http')
                   ? NetworkImage(controller.conversation.headImage)
                   : AssetImage(controller.conversation.headImage) as ImageProvider,
@@ -29,7 +30,6 @@ class ChatView extends GetView<ChatLogic> {
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {
-              // 显示更多选项
               Get.snackbar('提示', '更多功能开发中...');
             },
           ),
@@ -38,82 +38,112 @@ class ChatView extends GetView<ChatLogic> {
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.purple.withOpacity(0.1),
-                    backgroundImage: controller.conversation.headImage.startsWith('http')
-                        ? NetworkImage(controller.conversation.headImage)
-                        : AssetImage(controller.conversation.headImage) as ImageProvider,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    controller.conversation.name,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '开始聊天吧',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    '💬 聊天功能开发中...',
-                    style: TextStyle(fontSize: 16, color: Colors.purple),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: Border(top: BorderSide(color: Colors.grey.shade300)),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () {
-                    Get.snackbar('提示', '附加功能开发中...');
-                  },
-                ),
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: '输入消息...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide.none,
+            child: Obx(() {
+              if (controller.messages.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.purple.withValues(alpha: 0.1),
+                        backgroundImage: controller.conversation.headImage.startsWith('http')
+                            ? NetworkImage(controller.conversation.headImage)
+                            : AssetImage(controller.conversation.headImage) as ImageProvider,
                       ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (value) {
-                      if (value.trim().isNotEmpty) {
-                        Get.snackbar('提示', '发送功能开发中...');
-                      }
-                    },
+                      const SizedBox(height: 16),
+                      Text(
+                        controller.conversation.name,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '开始聊天吧',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    Get.snackbar('提示', '发送功能开发中...');
-                  },
-                ),
-              ],
-            ),
+                );
+              }
+
+              return ListView.builder(
+                controller: controller.scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: controller.messages.length,
+                itemBuilder: (context, index) {
+                  final message = controller.messages[index];
+                  final isMe = message.fromUserId == controller.appData.user.value.id;
+                  
+                  return MessageBubble(
+                    message: message,
+                    isMe: isMe,
+                    onRetry: () => controller.retryMessage(message),
+                  );
+                },
+              );
+            }),
           ),
+          _buildInputArea(),
         ],
       ),
     );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () {
+              Get.snackbar('提示', '附加功能开发中...');
+            },
+          ),
+          Expanded(
+            child: TextField(
+              controller: controller.textController,
+              decoration: InputDecoration(
+                hintText: '输入消息...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              maxLines: null,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (value) {
+                _sendMessage();
+              },
+            ),
+          ),
+          Obx(() => IconButton(
+            icon: controller.isSending.value 
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send),
+            onPressed: controller.isSending.value ? null : _sendMessage,
+          )),
+        ],
+      ),
+    );
+  }
+
+  void _sendMessage() {
+    final text = controller.textController.text.trim();
+    if (text.isNotEmpty) {
+      controller.sendTextMessage(text);
+      controller.textController.clear();
+    }
   }
 }

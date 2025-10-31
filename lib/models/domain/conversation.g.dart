@@ -22,6 +22,7 @@ Conversation _$ConversationFromJson(Map<String, dynamic> json) => Conversation(
   ),
   lastMsgId: json['lastMsgId'] as String?,
   lastMsgTime: (json['lastMsgTime'] as num?)?.toInt(),
+  chatId: json['chatId'] as String?,
 );
 
 Map<String, dynamic> _$ConversationToJson(Conversation instance) =>
@@ -38,6 +39,7 @@ Map<String, dynamic> _$ConversationToJson(Conversation instance) =>
       'lastMsgFormat': _$MessageTypeEnumMap[instance.lastMsgFormat],
       'lastMsgId': instance.lastMsgId,
       'lastMsgTime': instance.lastMsgTime,
+      'chatId': instance.chatId,
     };
 
 const _$MessageTypeEnumMap = {

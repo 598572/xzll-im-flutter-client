@@ -212,7 +212,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
   /// 开始聊天
   void _startChat(Friend friend) {
-    // 创建临时会话对象
+    // 创建临时会话对象（从好友列表启动聊天时没有服务端chatId，需要客户端生成）
     final conversation = Conversation(
       name: friend.displayName,
       headImage: friend.friendHeadImage ?? 'assets/other_headImage.png',
@@ -223,6 +223,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
       targetUserId: friend.friendId,
       targetUserName: friend.displayName,
       targetUserAvatar: friend.friendHeadImage,
+      chatId: null, // 从好友列表启动聊天时没有chatId，由ChatLogic生成
     );
 
     Navigator.push(

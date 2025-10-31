@@ -10,7 +10,7 @@ class HomeBinding extends Bindings {
   void dependencies() {
     Get.put(HomeLogic());
     Get.lazyPut(() => ConversationLogic());
-    Get.lazyPut(() => ContactsLogic());
+    Get.put(ContactsLogic()); // 改为立即初始化，确保能及时加载未读数量
     Get.lazyPut(() => DiscoverLogic());
     Get.lazyPut(() => MineLogic());
   }

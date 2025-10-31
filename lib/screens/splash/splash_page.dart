@@ -28,7 +28,7 @@ class SplashPage extends GetView<SplashLogic> {
 
             // 应用名称
             const Text(
-              '蝎聊',
+              'OkIM',
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.purple),
             ),
             const SizedBox(height: 16),
