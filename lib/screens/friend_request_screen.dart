@@ -6,6 +6,7 @@ import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
+import 'package:xzll_im_flutter_client/screens/contacts/contacts_logic.dart';
 import '../services/friend_service.dart';
 import '../utils/time_utils.dart';
 
@@ -40,6 +41,9 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
     _loadReceivedRequests();
     _loadSentRequests();
     _setupFriendRequestListener();
+    
+    // 用户进入好友申请页面，清除通讯录的未读数量
+    _clearUnreadCountInContacts();
   }
 
   @override
@@ -622,6 +626,21 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> with SingleTi
         // 如果是好友申请处理结果，刷新发送的申请列表
         info("🔄 刷新发送的好友申请列表");
         _loadSentRequests();
+      }
+    });
+  }
+
+  /// 清除通讯录中的未读数量
+  void _clearUnreadCountInContacts() {
+    // 延迟执行，确保页面加载完成
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        final contactsLogic = Get.find<ContactsLogic>();
+        contactsLogic.unreadFriendRequestCount.value = 0;
+        info("✅ 已清除通讯录未读好友申请数量");
+      } catch (e) {
+        info("⚠️ 清除通讯录未读数量失败: $e");
+        // 可能ContactsLogic还没有初始化，忽略错误
       }
     });
   }

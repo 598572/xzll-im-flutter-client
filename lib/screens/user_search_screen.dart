@@ -152,7 +152,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
 
   /// 开始聊天
   void _startChat(UserSearchResult user) {
-    // 创建临时会话对象
+    // 创建临时会话对象（从搜索用户启动聊天时没有服务端chatId，需要客户端生成）
     final conversation = Conversation(
       name: user.displayName,
       headImage: user.headImage ?? 'assets/other_headImage.png',
@@ -163,6 +163,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       targetUserId: user.userId,
       targetUserName: user.displayName,
       targetUserAvatar: user.headImage,
+      chatId: null, // 从搜索用户启动聊天时没有chatId，由ChatLogic生成
     );
 
     // 导航到聊天页面，传递会话对象

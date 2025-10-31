@@ -62,6 +62,7 @@ class _RecentConversationsScreenState extends State<RecentConversationsScreen> {
               lastMsgFormat: conversation.lastMsgFormat,
               lastMsgId: conversation.lastMsgId,
               lastMsgTime: conversation.lastMsgTime,
+              chatId: conversation.chatId, // 保持原有的chatId
             );
           } else {
             // 如果是新会话，添加到列表顶部

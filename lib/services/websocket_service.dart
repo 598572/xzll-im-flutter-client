@@ -29,9 +29,17 @@ class WebSocketService extends GetxService {
 
   late int retryCount = AppConfig.webSocketRetryCount;
 
-  // 本地消息ID缓存
-  final List<String> _msgIds = [];
-  bool _isGettingMsgIds = false;
+  // 消息ID现在由服务端生成，移除客户端缓存机制
+  // final List<String> _msgIds = [];  // 已删除
+  // bool _isGettingMsgIds = false;    // 已删除
+
+  // 心跳相关
+  Timer? _heartbeatTimer;
+  Timer? _heartbeatTimeoutTimer;
+  DateTime? _lastHeartbeatTime;
+  static const Duration _heartbeatInterval = Duration(seconds: 25); // 心跳间隔25秒（服务器30秒空闲检测）
+  static const Duration _heartbeatTimeout = Duration(seconds: 10); // 心跳超时10秒
+  bool _isWaitingForPong = false;
 
   @override
   void onInit() {
@@ -76,10 +84,11 @@ class WebSocketService extends GetxService {
       retryCount = AppConfig.webSocketRetryCount;
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
       
-      // 连接成功后立即获取消息ID
-      info("🔗 WebSocket连接成功，500ms后开始获取消息ID");
-      await Future.delayed(Duration(milliseconds: 500));
-      getMsgIdsFromServer();
+      // 连接成功，启动心跳机制（消息ID改为服务端生成，无需客户端获取）
+      info("🔗 WebSocket连接成功");
+      
+      // 启动心跳机制
+      _startHeartbeat();
     } catch (e) {
       error("❌ WebSocket连接失败: $e");
       AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
@@ -108,56 +117,34 @@ class WebSocketService extends GetxService {
   void _onDone() async {
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
     waring("🔌 WebSocket连接已关闭");
+    
+    // 停止心跳
+    _stopHeartbeat();
+    
     await retryWebSocket();
   }
 
   void _onError(Object e, StackTrace stackTrace) {
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
     error("❌ WebSocket错误: $e  $stackTrace");
-  }
-
-  // 从服务器获取消息ID
-  Future<void> getMsgIdsFromServer() async {
-    info("📞 开始获取消息ID - WebSocket状态: ${_channel != null ? '已连接' : '未连接'}");
     
-    if (_isGettingMsgIds) {
-      info("⏳ 正在获取消息ID中...");
-      return;
-    }
-
-    if (_channel == null) {
-      error("❌ WebSocket未连接，无法获取消息ID");
-      return;
-    }
-
-    try {
-      _isGettingMsgIds = true;
-      info("🔄 设置获取状态为true，当前用户ID: $_currentUserId");
-      
-      // 构建获取消息ID请求
-      GetBatchMsgIdsReq getBatchMsgIdsReq = GetBatchMsgIdsReq(
-        userId: _currentUserId,
-      );
-
-      // 包装为 ImProtoRequest
-      ImProtoRequest protoRequest = ImProtoRequest(
-        type: MsgType.GET_BATCH_MSG_IDS,
-        payload: getBatchMsgIdsReq.writeToBuffer(),
-      );
-
-      // 发送 Protobuf 二进制消息
-      Uint8List bytes = protoRequest.writeToBuffer();
-      _channel!.sink.add(bytes);
-      info("📤 发送获取消息ID请求成功 - 请求类型: ${protoRequest.type.name}");
-    } catch (e) {
-      error("❌ 获取消息ID失败: $e");
-      _isGettingMsgIds = false;
-    }
+    // 停止心跳
+    _stopHeartbeat();
   }
+
+  // ==================== 消息ID获取机制已移除 ====================
+  // 消息ID现在由服务端在接收消息时生成，客户端无需预先获取
+  // 移除了 getMsgIdsFromServer() 方法
 
   // 处理接收到的消息
   void _onData(dynamic message) {
     try {
+      // 检查是否是心跳响应（字符串形式）
+      if (message is String && message == "pong") {
+        _handleHeartbeatResponse();
+        return;
+      }
+      
       if (message is! Uint8List && message is! List<int>) {
         info("⚠️ 收到非二进制消息，跳过: ${message.runtimeType}");
         return;
@@ -186,8 +173,8 @@ class WebSocketService extends GetxService {
           break;
 
         case MsgType.PUSH_BATCH_MSG_IDS:
-          // 处理批量消息ID
-          _handleBatchMsgIds(protoResponse);
+          // 批量消息ID功能已移除 - 消息ID现在由服务端生成
+          info("⚠️ 收到批量消息ID推送，但该功能已禁用（消息ID现由服务端生成）");
           break;
 
         case MsgType.C2C_ACK:
@@ -257,36 +244,10 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 处理批量消息ID
-  void _handleBatchMsgIds(ImProtoResponse protoResponse) {
-    try {
-      info("📥 开始处理批量消息ID响应");
-      BatchMsgIdsPush resp = BatchMsgIdsPush.fromBuffer(protoResponse.payload);
-      List<String> msgIdList = resp.msgIds;
+  // ==================== 批量消息ID处理已移除 ====================
+  // _handleBatchMsgIds 方法已移除，消息ID现在由服务端在接收消息时生成
 
-      info("🆔 获取到消息ID，数量: ${msgIdList.length}");
-      if (msgIdList.isNotEmpty) {
-        info("📝 消息ID列表前5个: ${msgIdList.take(5).toList()}");
-      }
-
-      if (msgIdList.isNotEmpty) {
-        int oldCount = _msgIds.length;
-        _msgIds.addAll(msgIdList);
-        info("✅ 消息ID已添加到本地缓存，原数量: $oldCount, 新增: ${msgIdList.length}, 总数量: ${_msgIds.length}");
-        AppEvent.onMsgIdsReceived.add(msgIdList);
-      } else {
-        waring("⚠️ 服务器返回的消息ID列表为空");
-      }
-
-      _isGettingMsgIds = false;
-      info("🔓 消息ID获取完成，已释放获取锁");
-    } catch (e, stackTrace) {
-      error("❌ 解析 BatchMsgIdsPush 失败: $e\n$stackTrace");
-      _isGettingMsgIds = false;
-    }
-  }
-
-  /// 处理ACK消息
+  /// 处理ACK消息 - 更新临时ID为真实ID
   void _handleAckMessage(ImProtoResponse protoResponse) {
     try {
       C2CAckReq ack = C2CAckReq.fromBuffer(protoResponse.payload);
@@ -297,7 +258,7 @@ class WebSocketService extends GetxService {
       if (status == 1) {
         // 服务端status=1表示"到达服务器"，客户端直接显示"未读"（隐藏服务器ACK状态）
         statusText = "服务器已确认(显示未读)";
-        messageStatus = MessageStatus.unRead;
+        messageStatus = MessageStatus.serverReceived; // 改为服务器已接收状态
       } else if (status == 2) {
         statusText = "对方离线";
         messageStatus = MessageStatus.unRead; // 按服务端设计，离线也显示为未读
@@ -312,8 +273,10 @@ class WebSocketService extends GetxService {
         messageStatus = MessageStatus.unRead; // 未知状态默认显示未读
       }
 
-      info("★★★ [收到ACK] msgId=${ack.msgId}, 服务端状态=$statusText, 客户端显示=${messageStatus.desc} ★★★");
+      info("★★★ [收到ACK] 临时ID=${ack.msgId} (服务端应返回真实ID), 状态=$statusText ★★★");
       
+      // TODO: 这里需要服务端配合，返回 {clientMsgId: tempId, serverMsgId: realId}
+      // 当前暂时用 ack.msgId 作为临时ID进行匹配
       AppEvent.onMessageStatusChanged.add(
         MessageStatusChangedModel(messageId: ack.msgId, messageStatus: messageStatus),
       );
@@ -411,53 +374,22 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 获取一个可用的消息ID
-  String? _getNextMsgId() {
-    info("🔍 获取消息ID - 缓存数量: ${_msgIds.length}, 正在获取中: $_isGettingMsgIds");
-    
-    if (_msgIds.isEmpty) {
-      // 如果消息ID用完了，触发获取
-      if (!_isGettingMsgIds) {
-        info("📥 消息ID缓存为空，开始获取新的消息ID");
-        getMsgIdsFromServer();
-      } else {
-        info("⏳ 正在获取消息ID中，请稍候...");
-      }
-      return null;
-    }
-    
-    String msgId = _msgIds.removeAt(0);
-    info("✅ 获取到消息ID: $msgId, 剩余数量: ${_msgIds.length}");
-    return msgId;
-  }
+  // ==================== 消息ID获取方法已移除 ====================
+  // _getNextMsgId() 方法已移除，消息ID现在由服务端生成
 
-  // 发送消息
+  // 发送消息（服务端生成消息ID版本）
   Future<ChatMessage?> sendMessage(ChatMessage message) async {
     try {
-      // 获取消息ID，如果失败则重试
-      String? msgId = _getNextMsgId();
-      if (msgId == null) {
-        error("❌ 没有可用的消息ID，尝试重新获取...");
-        // 重置获取状态，强制重新获取
-        _isGettingMsgIds = false;
-        getMsgIdsFromServer();
-        
-        // 等待一小段时间后再次尝试
-        await Future.delayed(Duration(milliseconds: 100));
-        msgId = _getNextMsgId();
-        
-        if (msgId == null) {
-          error("❌ 重试获取消息ID失败");
-          return null;
-        }
-      }
+      // 生成临时消息ID（用于客户端跟踪，服务端会替换为真实ID）
+      final tempMsgId = 'temp_${DateTime.now().millisecondsSinceEpoch}_${message.fromUserId}';
+      info("📤 准备发送消息，临时ID: $tempMsgId, 内容: ${message.content}");
+      
+      // 使用临时ID更新消息对象
+      message = message.copyWith(msgId: tempMsgId);
 
-      // 更新消息ID
-      message = message.copyWith(msgId: msgId);
-
-      // 构建 Protobuf C2C 发送消息请求
+      // 构建 Protobuf C2C 发送消息请求（包含临时ID，让服务端在ACK中返回）
       C2CSendReq c2cSendReq = C2CSendReq(
-        msgId: message.msgId,
+        msgId: tempMsgId,  // 发送临时ID，服务端需要在ACK中返回此ID
         from: message.fromUserId,
         to: message.toUserId,
         format: message.type,
@@ -475,15 +407,14 @@ class WebSocketService extends GetxService {
       // 发送 Protobuf 二进制消息
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel!.sink.add(bytes);
-      info("📤 发送消息成功: msgId=$msgId, content=${message.content}");
+      info("📤 消息已发送到服务端，等待服务端分配真实消息ID");
 
       // 触发消息状态变化事件（发送中）
-      info("📤 设置消息状态为: ${MessageStatus.sending.desc}");
       AppEvent.onMessageStatusChanged.add(
-        MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.sending),
+        MessageStatusChangedModel(messageId: tempMsgId, messageStatus: MessageStatus.sending),
       );
 
-      return message; // 返回更新后的消息对象
+      return message; // 返回带临时ID的消息对象
     } catch (e, stackTrace) {
       error("❌ 发送消息失败: $e\n$stackTrace");
       return null;
@@ -506,6 +437,7 @@ class WebSocketService extends GetxService {
       lastMsgFormat: MessageType.fromCode(message.type),
       lastMsgId: message.msgId,
       lastMsgTime: message.timestamp.millisecondsSinceEpoch,
+      chatId: message.chatId, // 使用消息中的chatId
     );
 
     AppEvent.onConversationUpdated.add(updatedConversation);
@@ -608,35 +540,127 @@ class WebSocketService extends GetxService {
     // TODO: 会话列表可能需要通过HTTP API获取，而不是WebSocket
   }
 
-  /// 检查消息ID状态（用于调试）
-  void checkMsgIdStatus() {
-    info("========== 消息ID状态检查 ==========");
+  /// 检查WebSocket连接状态（用于调试）
+  void checkConnectionStatus() {
+    info("========== WebSocket连接状态检查 ==========");
     info("📊 WebSocket连接状态: ${_channel != null ? '已连接' : '未连接'}");
-    info("📊 当前缓存消息ID数量: ${_msgIds.length}");
-    info("📊 正在获取消息ID: $_isGettingMsgIds");
     info("📊 当前用户ID: $_currentUserId");
     info("📊 WebSocket状态: ${AppEvent.webSocketStatus.value}");
-    if (_msgIds.isNotEmpty) {
-      info("📊 缓存中的前3个消息ID: ${_msgIds.take(3).toList()}");
-    }
+    info("💓 心跳状态: ${_isWaitingForPong ? '等待Pong' : '正常'}");
     info("=====================================");
   }
 
-  /// 手动触发获取消息ID（用于调试）
-  void forceGetMsgIds() {
-    info("🔄 手动强制获取消息ID");
-    _isGettingMsgIds = false; // 重置状态
-    getMsgIdsFromServer();
+  // ==================== 消息ID相关调试方法已移除 ====================
+  // forceGetMsgIds() 方法已移除，消息ID现在由服务端生成
+
+  // ==================== 心跳机制 ====================
+  
+  /// 启动心跳定时器
+  void _startHeartbeat() {
+    // 停止之前的定时器（如果有）
+    _stopHeartbeat();
+    
+    info("💓 启动心跳机制，间隔: ${_heartbeatInterval.inSeconds}秒");
+    
+    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (timer) {
+      if (_channel != null && AppEvent.webSocketStatus.value == WebSocketStatus.connected) {
+        _sendHeartbeat();
+      } else {
+        info("⚠️ WebSocket未连接，停止心跳");
+        _stopHeartbeat();
+      }
+    });
+  }
+  
+  /// 停止心跳定时器
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    
+    _heartbeatTimeoutTimer?.cancel();
+    _heartbeatTimeoutTimer = null;
+    
+    _isWaitingForPong = false;
+    info("💓 心跳机制已停止");
+  }
+  
+  /// 发送心跳ping
+  void _sendHeartbeat() {
+    if (_isWaitingForPong) {
+      waring("⚠️ 上一个心跳还未收到响应，可能连接有问题");
+      _handleHeartbeatTimeout();
+      return;
+    }
+    
+    try {
+      _lastHeartbeatTime = DateTime.now();
+      _isWaitingForPong = true;
+      
+      info("💓 [${_formatTime(_lastHeartbeatTime!)}] 发送心跳 Ping");
+      
+      // 发送ping消息，保持与服务端IdleStateHandler(30秒)的兼容性
+      _channel?.sink.add("ping");
+      
+      // 启动心跳超时定时器
+      _heartbeatTimeoutTimer = Timer(_heartbeatTimeout, () {
+        if (_isWaitingForPong) {
+          waring("💔 心跳超时，未收到Pong响应");
+          _handleHeartbeatTimeout();
+        }
+      });
+      
+    } catch (e) {
+      error("❌ 发送心跳失败: $e");
+      _handleHeartbeatTimeout();
+    }
+  }
+  
+  /// 处理心跳响应
+  void _handleHeartbeatResponse() {
+    if (_isWaitingForPong) {
+      _isWaitingForPong = false;
+      _heartbeatTimeoutTimer?.cancel();
+      _heartbeatTimeoutTimer = null;
+      
+      final now = DateTime.now();
+      final latency = _lastHeartbeatTime != null 
+          ? now.difference(_lastHeartbeatTime!).inMilliseconds
+          : 0;
+      
+      info("💚 [${_formatTime(now)}] 收到心跳响应 Pong (延迟: ${latency}ms)");
+    }
+  }
+  
+  /// 处理心跳超时
+  void _handleHeartbeatTimeout() {
+    waring("💔 心跳超时，准备重连");
+    _isWaitingForPong = false;
+    
+    // 心跳超时，认为连接有问题，触发重连
+    AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
+    retryWebSocket();
+  }
+  
+  /// 格式化时间显示
+  String _formatTime(DateTime time) {
+    return "${time.hour.toString().padLeft(2, '0')}:"
+           "${time.minute.toString().padLeft(2, '0')}:"
+           "${time.second.toString().padLeft(2, '0')}";
   }
 
   void disconnect() async {
     info("🔌 断开WebSocket连接");
+    
+    // 停止心跳
+    _stopHeartbeat();
+    
     await _channel?.sink.close();
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
   }
 
   @override
   void onClose() {
+    _stopHeartbeat();
     _channel?.sink.close();
     super.onClose();
   }

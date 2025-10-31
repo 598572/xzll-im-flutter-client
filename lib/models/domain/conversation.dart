@@ -19,6 +19,7 @@ class Conversation {
   final MessageType? lastMsgFormat; // 最后消息格式 (0:文本, 1:图片, 2:语音等)
   final String? lastMsgId; // 最后消息ID
   final int? lastMsgTime; // 最后消息时间戳
+  final String? chatId; // 会话ID（从服务端返回）
 
   Conversation({
     required this.name,
@@ -33,6 +34,7 @@ class Conversation {
     this.lastMsgFormat,
     this.lastMsgId,
     this.lastMsgTime,
+    this.chatId,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) => _$ConversationFromJson(json);
@@ -53,6 +55,7 @@ class Conversation {
     MessageType? lastMsgFormat,
     String? lastMsgId,
     int? lastMsgTime,
+    String? chatId,
   }) {
     return Conversation(
       name: name ?? this.name,
@@ -67,6 +70,7 @@ class Conversation {
       lastMsgFormat: lastMsgFormat ?? this.lastMsgFormat,
       lastMsgId: lastMsgId ?? this.lastMsgId,
       lastMsgTime: lastMsgTime ?? this.lastMsgTime,
+      chatId: chatId ?? this.chatId,
     );
   }
 }

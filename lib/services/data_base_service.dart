@@ -14,7 +14,7 @@ class DataBaseService extends GetxService {
     try {
       String databasesPath = await getDatabasesPath();
       String path = join(databasesPath, 'xzll_$userId.db');
-      _database = await openDatabase(path, version: 1, onCreate: _onCreate, onUpgrade: _onUpgrade);
+      _database = await openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
       info("初始化数据库成功");
     } catch (e) {
       error("初始化本地数据库失败：${e.toString()}");
@@ -30,53 +30,199 @@ class DataBaseService extends GetxService {
       )
     ''');
 
-    // 创建会话表
+    // 创建会话表（使用驼峰命名以匹配Conversation.toJson()）
     await db.execute('''
       CREATE TABLE IF NOT EXISTS conversations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        target_user_id TEXT NOT NULL,
-        target_user_name TEXT,
-        target_user_avatar TEXT,
-        last_message TEXT,
-        last_msg_id TEXT,
-        last_msg_time INTEGER,
-        last_msg_format INTEGER,
-        unread_count INTEGER DEFAULT 0,
+        name TEXT NOT NULL,
+        headImage TEXT NOT NULL,
+        userId TEXT NOT NULL,
+        targetUserId TEXT NOT NULL,
+        targetUserName TEXT,
+        targetUserAvatar TEXT,
+        lastMessage TEXT,
+        lastMsgId TEXT,
+        lastMsgTime INTEGER,
+        lastMsgFormat INTEGER,
+        unreadCount INTEGER DEFAULT 0,
         timestamp TEXT NOT NULL,
+        chatId TEXT,
         created_at INTEGER DEFAULT (strftime('%s', 'now')),
         updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-        UNIQUE(user_id, target_user_id)
+        UNIQUE(userId, targetUserId)
       )
     ''');
 
-    // 创建消息表
+    // 创建消息表（使用驼峰命名以匹配ChatMessage.toJson()）
     await db.execute('''
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        msg_id TEXT UNIQUE NOT NULL,
+        msgId TEXT UNIQUE NOT NULL,
         content TEXT NOT NULL,
-        from_user_id TEXT NOT NULL,
-        to_user_id TEXT NOT NULL,
+        fromUserId TEXT NOT NULL,
+        toUserId TEXT NOT NULL,
         type INTEGER NOT NULL,
         status INTEGER DEFAULT 1,
-        timestamp INTEGER NOT NULL,
-        withdraw_status INTEGER DEFAULT 0,
+        timestamp TEXT NOT NULL,
+        withdrawStatus INTEGER DEFAULT 0,
+        chatId TEXT NOT NULL,
         created_at INTEGER DEFAULT (strftime('%s', 'now'))
       )
     ''');
 
     // 为消息表创建索引
     await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_messages_from_user_id ON messages(from_user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_messages_fromUserId ON messages(fromUserId)',
     );
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_to_user_id ON messages(to_user_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_toUserId ON messages(toUserId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)');
 
     debug("数据库表创建成功");
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {}
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    debug("数据库升级：从版本 $oldVersion 到 $newVersion");
+    
+    if (oldVersion < 2) {
+      // 版本1到版本2：更新消息表结构
+      await _upgradeToV2(db);
+    }
+    
+    if (oldVersion < 3) {
+      // 版本2到版本3：更新会话表结构
+      await _upgradeToV3(db);
+    }
+  }
+  
+  /// 升级到版本2：修复字段名匹配问题
+  Future<void> _upgradeToV2(Database db) async {
+    try {
+      // 1. 创建新的messages表（备份旧数据）
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS messages_backup (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          msgId TEXT UNIQUE NOT NULL,
+          content TEXT NOT NULL,
+          fromUserId TEXT NOT NULL,
+          toUserId TEXT NOT NULL,
+          type INTEGER NOT NULL,
+          status INTEGER DEFAULT 1,
+          timestamp TEXT NOT NULL,
+          withdrawStatus INTEGER DEFAULT 0,
+          chatId TEXT NOT NULL,
+          created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+      ''');
+      
+      // 2. 检查旧表是否存在数据
+      final List<Map<String, dynamic>> oldData = await db.query('messages');
+      
+      if (oldData.isNotEmpty) {
+        // 3. 迁移旧数据到新表（字段名映射）
+        Batch batch = db.batch();
+        for (Map<String, dynamic> row in oldData) {
+          batch.insert('messages_backup', {
+            'msgId': row['msg_id'] ?? row['msgId'] ?? '',
+            'content': row['content'] ?? '',
+            'fromUserId': row['from_user_id'] ?? row['fromUserId'] ?? '',
+            'toUserId': row['to_user_id'] ?? row['toUserId'] ?? '',
+            'type': row['type'] ?? 1,
+            'status': row['status'] ?? 1,
+            'timestamp': row['timestamp'] ?? DateTime.now().toIso8601String(),
+            'withdrawStatus': row['withdraw_status'] ?? row['withdrawStatus'] ?? 0,
+            'chatId': row['chatId'] ?? '', // 新字段，可能为空
+            'created_at': row['created_at'] ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000),
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await batch.commit(noResult: true);
+        debug("迁移 ${oldData.length} 条消息数据");
+      }
+      
+      // 4. 删除旧表
+      await db.execute('DROP TABLE IF EXISTS messages');
+      
+      // 5. 重命名备份表为正式表
+      await db.execute('ALTER TABLE messages_backup RENAME TO messages');
+      
+      // 6. 重建索引
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_fromUserId ON messages(fromUserId)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_toUserId ON messages(toUserId)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)');
+      
+      debug("数据库升级到V2完成");
+    } catch (e) {
+      error("数据库升级失败: $e");
+      rethrow;
+    }
+  }
+  
+  /// 升级到版本3：修复会话表字段名匹配问题
+  Future<void> _upgradeToV3(Database db) async {
+    try {
+      // 1. 创建新的conversations表（备份旧数据）
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS conversations_backup (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          headImage TEXT NOT NULL,
+          userId TEXT NOT NULL,
+          targetUserId TEXT NOT NULL,
+          targetUserName TEXT,
+          targetUserAvatar TEXT,
+          lastMessage TEXT,
+          lastMsgId TEXT,
+          lastMsgTime INTEGER,
+          lastMsgFormat INTEGER,
+          unreadCount INTEGER DEFAULT 0,
+          timestamp TEXT NOT NULL,
+          chatId TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+          UNIQUE(userId, targetUserId)
+        )
+      ''');
+      
+      // 2. 检查旧表是否存在数据
+      final List<Map<String, dynamic>> oldData = await db.query('conversations');
+      
+      if (oldData.isNotEmpty) {
+        // 3. 迁移旧数据到新表（字段名映射）
+        Batch batch = db.batch();
+        for (Map<String, dynamic> row in oldData) {
+          batch.insert('conversations_backup', {
+            'name': row['target_user_name'] ?? row['targetUserName'] ?? row['name'] ?? '',
+            'headImage': row['target_user_avatar'] ?? row['targetUserAvatar'] ?? row['headImage'] ?? 'assets/other_headImage.png',
+            'userId': row['user_id'] ?? row['userId'] ?? '',
+            'targetUserId': row['target_user_id'] ?? row['targetUserId'] ?? '',
+            'targetUserName': row['target_user_name'] ?? row['targetUserName'] ?? '',
+            'targetUserAvatar': row['target_user_avatar'] ?? row['targetUserAvatar'] ?? '',
+            'lastMessage': row['last_message'] ?? row['lastMessage'] ?? '',
+            'lastMsgId': row['last_msg_id'] ?? row['lastMsgId'] ?? '',
+            'lastMsgTime': row['last_msg_time'] ?? row['lastMsgTime'] ?? 0,
+            'lastMsgFormat': row['last_msg_format'] ?? row['lastMsgFormat'] ?? 1,
+            'unreadCount': row['unread_count'] ?? row['unreadCount'] ?? 0,
+            'timestamp': row['timestamp'] ?? DateTime.now().toIso8601String(),
+            'chatId': row['chatId'] ?? '', // 新字段，可能为空
+            'created_at': row['created_at'] ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000),
+            'updated_at': row['updated_at'] ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000),
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await batch.commit(noResult: true);
+        debug("迁移 ${oldData.length} 条会话数据");
+      }
+      
+      // 4. 删除旧表
+      await db.execute('DROP TABLE IF EXISTS conversations');
+      
+      // 5. 重命名备份表为正式表
+      await db.execute('ALTER TABLE conversations_backup RENAME TO conversations');
+      
+      debug("数据库升级到V3完成");
+    } catch (e) {
+      error("会话表升级失败: $e");
+      rethrow;
+    }
+  }
 
   ///关闭数据库成功
   Future<void> close() async {
@@ -154,9 +300,9 @@ class DataBaseService extends GetxService {
 
     final List<Map<String, dynamic>> result = await _database!.query(
       'conversations',
-      where: 'user_id = ?',
+      where: 'userId = ?',
       whereArgs: [userId],
-      orderBy: 'last_msg_time DESC, updated_at DESC',
+      orderBy: 'lastMsgTime DESC, updated_at DESC',
     );
 
     return result.map((map) {
@@ -177,8 +323,8 @@ class DataBaseService extends GetxService {
 
     await _database!.update(
       'conversations',
-      {'unread_count': unreadCount, 'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000},
-      where: 'user_id = ? AND target_user_id = ?',
+      {'unreadCount': unreadCount, 'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000},
+      where: 'userId = ? AND targetUserId = ?',
       whereArgs: [userId, targetUserId],
     );
     debug("会话未读数已更新: $targetUserId -> $unreadCount");
@@ -193,7 +339,7 @@ class DataBaseService extends GetxService {
 
     await _database!.delete(
       'conversations',
-      where: 'user_id = ? AND target_user_id = ?',
+      where: 'userId = ? AND targetUserId = ?',
       whereArgs: [userId, targetUserId],
     );
     debug("会话已删除: $targetUserId");
@@ -244,7 +390,7 @@ class DataBaseService extends GetxService {
 
     final List<Map<String, dynamic>> result = await _database!.query(
       'messages',
-      where: '(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)',
+      where: '(fromUserId = ? AND toUserId = ?) OR (fromUserId = ? AND toUserId = ?)',
       whereArgs: [userId1, userId2, userId2, userId1],
       orderBy: 'timestamp DESC',
       limit: limit,

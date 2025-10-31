@@ -7,6 +7,7 @@ import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
 
 /// 聊天历史消息请求模型
 class ChatHistoryRequest {
@@ -153,17 +154,18 @@ class ChatHistoryService {
     }
   }
 
-  /// 生成聊天ID
+  /// 生成聊天ID（按照服务端逻辑）
   /// 
   /// 根据两个用户ID生成唯一的聊天ID
-  /// 格式：较小的userId-较大的userId，确保同一对用户的chatId唯一
+  /// 
+  /// 使用统一的 ChatIdUtils 工具类生成会话ID
+  /// 格式：bizType-chatType-smallUserId-bigUserId
   String generateChatId(String userId1, String userId2) {
-    final sortedIds = [userId1, userId2]..sort();
-    return '${sortedIds[0]}-${sortedIds[1]}';
+    return ChatIdUtils.generateC2CChatId(userId1, userId2);
   }
 
   /// 根据会话信息生成聊天ID
   String generateChatIdFromConversation(String currentUserId, String targetUserId) {
-    return generateChatId(currentUserId, targetUserId);
+    return ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
   }
 }

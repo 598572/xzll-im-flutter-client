@@ -11,6 +11,7 @@ import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
 import 'package:xzll_im_flutter_client/services/websocket_service.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/services/chat_history_service.dart';
+import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
 
 class ChatLogic extends GetxController {
   /// 当前会话
@@ -74,11 +75,27 @@ class ChatLogic extends GetxController {
   void _setupMessageListeners() {
     // 监听消息状态变化
     _messageStatusSubscription = AppEvent.onMessageStatusChanged.stream.listen((MessageStatusChangedModel statusModel) {
-      info("📊 消息状态更新: ${statusModel.messageId} -> ${statusModel.messageStatus.desc}");
+      info("📊 收到消息状态更新: ${statusModel.messageId} -> ${statusModel.messageStatus.desc}");
       
+      // 查找要更新的消息（支持临时ID匹配）
       final index = messages.indexWhere((m) => m.msgId == statusModel.messageId);
       if (index != -1) {
-        messages[index] = messages[index].copyWith(status: statusModel.messageStatus);
+        final oldStatus = messages[index].status;
+        final updatedMessage = messages[index].copyWith(status: statusModel.messageStatus);
+        messages[index] = updatedMessage;
+        info("✅ 状态更新成功: 位置[$index] ${oldStatus.desc} -> ${statusModel.messageStatus.desc}");
+        
+        // 如果状态变为已确认，现在可以保存到数据库
+        if (statusModel.messageStatus == MessageStatus.serverReceived) {
+          info("💾 消息已被服务器确认，保存到数据库");
+          _saveMessageToDatabase(updatedMessage);
+        }
+      } else {
+        waring("⚠️ 未找到要更新状态的消息: ${statusModel.messageId}");
+        info("📱 当前消息列表:");
+        for (int i = 0; i < messages.length; i++) {
+          info("   [$i] msgId: ${messages[i].msgId}, status: ${messages[i].status.desc}");
+        }
       }
     });
 
@@ -115,14 +132,14 @@ class ChatLogic extends GetxController {
       isSending.value = true;
       info("📤 准备发送消息: $content");
 
-      // 获取聊天ID（使用两个用户ID的组合）
+      // 获取聊天ID（优先使用从服务端返回的chatId）
       final currentUserId = _appData.user.value.id;
       final targetUserId = conversation.targetUserId!;
-      final chatId = _generateChatId(currentUserId, targetUserId);
+      final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
 
-      // 创建消息对象（让WebSocketService内部处理消息ID）
+      // 创建消息对象（服务端会生成真实的消息ID）
       final message = ChatMessage(
-        msgId: '', // 这里先给个空值，WebSocketService会设置真实的msgId
+        msgId: '', // 空值，WebSocketService会生成临时ID，服务端会分配真实ID
         content: content,
         fromUserId: currentUserId,
         toUserId: targetUserId,
@@ -132,21 +149,26 @@ class ChatLogic extends GetxController {
         chatId: chatId,
       );
 
-      // 发送到服务器并获取更新后的消息对象（包含真实的msgId）
+      // 发送到服务器并获取更新后的消息对象（包含临时msgId）
       ChatMessage? sentMessage = await _webSocketService.sendMessage(message);
 
       if (sentMessage == null) {
-        error("❌ 发送消息失败");
+        error("❌ 发送消息失败 - WebSocketService.sendMessage 返回 null");
         // 添加失败状态的消息到本地列表
-        messages.add(message.copyWith(status: MessageStatus.fail));
+        final failedMessage = message.copyWith(status: MessageStatus.fail);
+        messages.add(failedMessage);
+        info("➕ 添加失败消息到界面: msgId=${failedMessage.msgId}, status=${failedMessage.status.desc}");
         Get.snackbar('发送失败', '消息发送失败，请重试', snackPosition: SnackPosition.TOP);
       } else {
-        info("✅ 消息发送成功，等待服务器确认");
-        // 添加发送中状态的消息到本地列表（使用返回的消息对象，包含真实msgId）
-        messages.add(sentMessage);
+        info("✅ 消息已发送到服务端，等待服务端分配真实ID并确认");
+        info("📋 返回的消息（临时ID）: msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
         
-        // 保存消息到本地数据库
-        _saveMessageToDatabase(sentMessage);
+        // 添加发送中状态的消息到本地列表（使用临时msgId，服务端确认后会更新为真实ID）
+        messages.add(sentMessage);
+        info("➕ 添加发送中消息到界面: msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
+        
+        // 暂时不保存到数据库，等收到服务端确认和真实ID后再保存
+        // _saveMessageToDatabase(sentMessage);
       }
       
       _scrollToBottom();
@@ -158,12 +180,6 @@ class ChatLogic extends GetxController {
     }
   }
 
-  /// 生成聊天ID
-  String _generateChatId(String userId1, String userId2) {
-    // 按字典序排列，确保两个用户之间的聊天ID唯一
-    final sortedIds = [userId1, userId2]..sort();
-    return '${sortedIds[0]}_${sortedIds[1]}';
-  }
 
   /// 滚动到底部
   void _scrollToBottom() {
@@ -200,6 +216,9 @@ class ChatLogic extends GetxController {
         return;
       }
       
+      // 打印调试信息
+      _debugChatInfo();
+      
       // 1. 首先从本地数据库加载历史消息
       final localMessages = await _databaseService.getMessagesBetweenUsers(
         currentUserId,
@@ -221,6 +240,22 @@ class ChatLogic extends GetxController {
       error('❌ 加载历史消息失败: $e');
     }
   }
+  
+  /// 调试信息输出
+  void _debugChatInfo() {
+    info('🔍 ========== 聊天调试信息 ==========');
+    info('🆔 当前用户ID: ${_appData.user.value.id}');
+    info('🎯 目标用户ID: ${conversation.targetUserId}');
+    info('💬 会话名称: ${conversation.targetUserName}');
+    info('🔗 会话chatId: ${conversation.chatId}');
+    info('📊 WebSocket状态: ${AppEvent.webSocketStatus.value}');
+    info('📱 当前消息数量: ${messages.length}');
+    
+    // 检查WebSocket连接状态
+    _webSocketService.checkConnectionStatus();
+    
+    info('🔍 =====================================');
+  }
 
   /// 从服务端加载历史消息
   Future<void> _loadHistoryFromServer({String? lastMsgId}) async {
@@ -228,8 +263,8 @@ class ChatLogic extends GetxController {
       final currentUserId = _appData.user.value.id;
       final targetUserId = conversation.targetUserId!;
       
-      // 生成聊天ID
-      final chatId = _historyService.generateChatId(currentUserId, targetUserId);
+      // 获取聊天ID（优先使用从服务端返回的chatId）
+      final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
       
       info('🌐 从服务端获取历史消息，chatId: $chatId, lastMsgId: $lastMsgId');
       

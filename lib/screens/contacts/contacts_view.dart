@@ -59,30 +59,69 @@ class ContactsView extends GetView<ContactsLogic> {
         }
 
         if (controller.friendList.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.people_outline,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '暂无好友',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
+          return RefreshIndicator(
+            onRefresh: controller.refreshFriendList,
+            child: CustomScrollView(
+              slivers: [
+                // 功能入口区域（即使没有好友也要显示）
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        // 新的朋友入口
+                        _buildNewFriendsEntry(),
+                        const Divider(height: 1, indent: 60),
+                        // 群聊入口（预留）
+                        _buildGroupChatEntry(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Get.toNamed(RouterName.userSearch);
-                  },
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('添加好友'),
+                
+                // 空状态提示
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '暂无好友',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '点击上方"新的朋友"查看好友申请',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Get.toNamed(RouterName.userSearch);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.person_add),
+                          label: const Text('搜索添加好友'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -102,22 +141,23 @@ class ContactsView extends GetView<ContactsLogic> {
     
     return CustomScrollView(
       slivers: [
-        // 新的朋友入口
+        // 功能入口区域
         SliverToBoxAdapter(
-          child: ListTile(
-            leading: CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.green.withValues(alpha: 0.1),
-              child: const Icon(Icons.person_add_alt, color: Colors.green),
+          child: Container(
+            color: Colors.white,
+            child: Column(
+              children: [
+                // 新的朋友入口
+                _buildNewFriendsEntry(),
+                const Divider(height: 1, indent: 60),
+                // 群聊入口（预留）
+                _buildGroupChatEntry(),
+                const SizedBox(height: 8),
+              ],
             ),
-            title: const Text('新的朋友', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-            subtitle: const Text('查看待处理和已处理的好友请求'),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            onTap: () {
-              Get.toNamed(RouterName.newFriends);
-            },
           ),
         ),
+        
         // 好友统计
         SliverToBoxAdapter(
           child: Container(
@@ -390,7 +430,7 @@ class ContactsView extends GetView<ContactsLogic> {
 
   /// 开始与好友聊天
   void _startChatWithFriend(Friend friend) {
-    // 创建会话对象
+    // 创建会话对象（从联系人启动聊天时没有服务端chatId，需要客户端生成）
     final conversation = Conversation(
       name: friend.displayName,
       headImage: friend.friendAvatar ?? 'assets/other_headImage.png',
@@ -401,12 +441,99 @@ class ContactsView extends GetView<ContactsLogic> {
       targetUserId: friend.friendId,
       targetUserName: friend.displayName, // 使用 displayName 而不是 friendName
       targetUserAvatar: friend.friendAvatar,
+      chatId: null, // 从联系人启动聊天时没有chatId，由ChatLogic生成
     );
 
     // 跳转到聊天页面
     Get.toNamed(
       RouterName.chat,
       arguments: conversation,
+    );
+  }
+
+  /// 构建新的朋友入口
+  Widget _buildNewFriendsEntry() {
+    return Obx(() => ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.orange,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          Icons.person_add,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+      title: const Text(
+        '新的朋友',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (controller.unreadFriendRequestCount.value > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(minWidth: 20),
+              child: Text(
+                controller.unreadFriendRequestCount.value > 99 
+                    ? '99+' 
+                    : '${controller.unreadFriendRequestCount.value}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right, color: Colors.grey),
+        ],
+      ),
+      onTap: () {
+        Get.toNamed(RouterName.friendRequest);
+      },
+    ));
+  }
+
+  /// 构建群聊入口
+  Widget _buildGroupChatEntry() {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          Icons.group,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+      title: const Text(
+        '群聊',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: () {
+        Get.snackbar('提示', '群聊功能开发中...');
+      },
     );
   }
 }

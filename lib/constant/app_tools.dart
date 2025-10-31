@@ -1,4 +1,5 @@
 import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
+import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
 
 String formatLastMessage(ChatMessage message) {
   // 消息格式（1:文本,2:图片,3:语音,4:视频,5:文件,6:位置）
@@ -34,11 +35,10 @@ String formatMessageTimestamp(DateTime timestamp) {
   }
 }
 
-/// 生成chatId
-/// 格式: 100-1-{userId1}-{userId2}
-/// 其中userId较小的在前，保证同一对话的chatId一致
+/// 生成chatId（按照服务端逻辑）
+/// 
+/// 使用统一的 ChatIdUtils 工具类生成会话ID
+/// 格式: bizType-chatType-smallUserId-bigUserId
 String generateChatId(String userId1, String userId2) {
-  List<String> userIds = [userId1, userId2];
-  userIds.sort(); // 按字典序排序
-  return '100-1-${userIds[0]}-${userIds[1]}';
+  return ChatIdUtils.generateC2CChatId(userId1, userId2);
 }

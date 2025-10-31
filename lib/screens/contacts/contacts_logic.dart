@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
+import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend.dart';
+import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
 import 'package:xzll_im_flutter_client/models/request/friend_list_request.dart';
 import 'package:xzll_im_flutter_client/services/friend_service.dart';
 
@@ -16,11 +19,17 @@ class ContactsLogic extends GetxController {
   final RxList<Friend> friendList = <Friend>[].obs;
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
+  final RxInt unreadFriendRequestCount = 0.obs;
+  
+  /// 好友申请推送事件订阅
+  StreamSubscription? _friendRequestSubscription;
 
   @override
   void onInit() {
     super.onInit();
     loadFriendList();
+    loadUnreadFriendRequestCount();
+    _setupFriendRequestListener();
   }
 
   /// 加载好友列表
@@ -103,5 +112,48 @@ class ContactsLogic extends GetxController {
     } else {
       return '#';
     }
+  }
+
+  /// 加载未读好友申请数量
+  Future<void> loadUnreadFriendRequestCount() async {
+    try {
+      final response = await _friendService.getReceivedRequests(_appData.user.value.id);
+      
+      if (response.success && response.data != null) {
+        // 统计状态为0（待处理）的申请数量
+        final pendingRequests = response.data!.where((request) => request.status == 0).toList();
+        unreadFriendRequestCount.value = pendingRequests.length;
+        info('未读好友申请数量: ${unreadFriendRequestCount.value}');
+      } else {
+        error('加载未读好友申请数量失败: ${response.message}');
+      }
+    } catch (e) {
+      error('加载未读好友申请数量异常: $e');
+    }
+  }
+
+  /// 设置好友申请推送监听
+  void _setupFriendRequestListener() {
+    _friendRequestSubscription = AppEvent.onFriendRequestPush.stream.listen((FriendRequestPushMessage pushMessage) {
+      info("🔔 通讯录收到好友申请推送: ${pushMessage.pushContent}");
+      
+      // 如果是新的好友申请，增加未读数量
+      if (pushMessage.isNewRequest) {
+        unreadFriendRequestCount.value++;
+        info("🔄 未读好友申请数量更新为: ${unreadFriendRequestCount.value}");
+      }
+    });
+  }
+
+  /// 刷新未读数量（在用户查看好友申请后调用）
+  void refreshUnreadCount() {
+    loadUnreadFriendRequestCount();
+  }
+
+  @override
+  void onClose() {
+    // 清理订阅
+    _friendRequestSubscription?.cancel();
+    super.onClose();
   }
 }
