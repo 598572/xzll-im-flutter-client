@@ -38,7 +38,7 @@ class HomeLogic extends GetxService {
   void _webSocketStatusChanged(WebSocketStatus status) async {
     info("WebSocketStatus: ${status.name}");
     if (status == WebSocketStatus.connected) {
-      await webSocketService.getMsgIdsFromServer();
+      // ✅ 批量获取消息ID的逻辑已移除（双轨制：消息ID由服务端实时生成）
       webSocketService.requestConversations();
     }
   }

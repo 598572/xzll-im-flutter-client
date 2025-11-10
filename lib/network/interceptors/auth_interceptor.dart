@@ -5,7 +5,9 @@ import 'package:xzll_im_flutter_client/constant/app_data.dart';
 ///2025/9/26
 ///kurban
 class AuthInterceptor extends Interceptor {
-  final AppData appData = Get.find<AppData>();
+  // ✅ 延迟获取 AppData，避免在 Web 端初始化时 AppData 还未注册
+  // Web 端的初始化顺序与 App 端不同，可能在 SplashPage 之前就创建 DioClient
+  AppData get appData => Get.find<AppData>();
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {

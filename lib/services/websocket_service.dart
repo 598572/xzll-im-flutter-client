@@ -18,12 +18,14 @@ import 'package:xzll_im_flutter_client/models/enum/connectivity_status.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_type.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
+import 'package:xzll_im_flutter_client/utils/uuid_generator.dart';
 
 /// WebSocket服务类 - Protobuf版本
 class WebSocketService extends GetxService {
   IOWebSocketChannel? _channel;
 
-  final AppData appData = Get.find<AppData>();
+  // ✅ 延迟获取 AppData，避免在 WebSocketService 初始化时 AppData 还未注册
+  AppData get appData => Get.find<AppData>();
 
   String get _currentUserId => appData.user.value.id;
 
@@ -178,7 +180,7 @@ class WebSocketService extends GetxService {
           break;
 
         case MsgType.C2C_ACK:
-          // 处理ACK消息（服务端推送的ACK）
+          // 处理ACK消息（双轨制：通过receiveStatus等字段区分服务端和客户端ACK）
           _handleAckMessage(protoResponse);
           break;
 
@@ -206,14 +208,15 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 处理推送消息（单聊消息）
+  /// 处理推送消息（单聊消息）- 双轨制
   void _handlePushMsg(ImProtoResponse protoResponse) {
     try {
       C2CMsgPush pushMsg = C2CMsgPush.fromBuffer(protoResponse.payload);
 
       info("============================================");
-      info("【收到单聊消息】");
-      info("  消息ID: ${pushMsg.msgId}");
+      info("【收到单聊消息（双轨制）】");
+      info("  客户端消息ID: ${pushMsg.clientMsgId}");
+      info("  服务端消息ID: ${pushMsg.msgId}");
       info("  发送人: ${pushMsg.from}");
       info("  接收人: ${pushMsg.to}");
       info("  消息格式: ${pushMsg.format}");
@@ -222,9 +225,10 @@ class WebSocketService extends GetxService {
       info("  会话ID: ${pushMsg.chatId}");
       info("============================================");
 
-      // 转换为ChatMessage
+      // 转换为ChatMessage（双轨制：保存两个ID）
       ChatMessage message = ChatMessage(
-        msgId: pushMsg.msgId,
+        clientMsgId: pushMsg.clientMsgId, // 客户端消息ID
+        msgId: pushMsg.msgId, // 服务端消息ID
         fromUserId: pushMsg.from,
         toUserId: pushMsg.to,
         content: pushMsg.content,
@@ -236,8 +240,8 @@ class WebSocketService extends GetxService {
 
       AppEvent.onMessageReceived.add(message);
 
-      // 自动发送接收确认
-      sendReceivedAck(pushMsg.msgId, pushMsg.from, pushMsg.to, pushMsg.chatId);
+      // 自动发送接收确认（双轨制：传递两个ID）
+      sendReceivedAck(pushMsg.clientMsgId, pushMsg.msgId, pushMsg.from, pushMsg.to, pushMsg.chatId);
       _updateConversationOnNewMessage(message);
     } catch (e, stackTrace) {
       error("❌ 解析 C2CMsgPush 失败: $e\n$stackTrace");
@@ -247,7 +251,7 @@ class WebSocketService extends GetxService {
   // ==================== 批量消息ID处理已移除 ====================
   // _handleBatchMsgIds 方法已移除，消息ID现在由服务端在接收消息时生成
 
-  /// 处理ACK消息 - 更新临时ID为真实ID
+  /// 处理ACK消息 - 双轨制（使用 clientMsgId 匹配，更新 serverMsgId）
   void _handleAckMessage(ImProtoResponse protoResponse) {
     try {
       C2CAckReq ack = C2CAckReq.fromBuffer(protoResponse.payload);
@@ -273,27 +277,44 @@ class WebSocketService extends GetxService {
         messageStatus = MessageStatus.unRead; // 未知状态默认显示未读
       }
 
-      info("★★★ [收到ACK] 临时ID=${ack.msgId} (服务端应返回真实ID), 状态=$statusText ★★★");
+      info("★★★ [收到ACK（双轨制）] 客户端ID=${ack.clientMsgId}, 服务端ID=${ack.msgId}, 状态=$statusText ★★★");
       
-      // TODO: 这里需要服务端配合，返回 {clientMsgId: tempId, serverMsgId: realId}
-      // 当前暂时用 ack.msgId 作为临时ID进行匹配
+      // 双轨制方案1：
+      // 1. 使用 clientMsgId 匹配消息
+      // 2. 更新消息的 serverMsgId（后续撤回/删除用这个）
+      // 3. 更新消息状态
       AppEvent.onMessageStatusChanged.add(
-        MessageStatusChangedModel(messageId: ack.msgId, messageStatus: messageStatus),
+        MessageStatusChangedModel(
+          messageId: ack.clientMsgId, 
+          messageStatus: messageStatus,
+          serverMsgId: ack.msgId.isNotEmpty ? ack.msgId : null, // ✅ 传递 serverMsgId
+        ),
       );
     } catch (e, stackTrace) {
       error("❌ 解析 ACK 失败: $e\n$stackTrace");
     }
   }
 
-  /// 处理撤回消息
+  /// 处理撤回消息 - 双轨制（使用 serverMsgId 匹配）
   void _handleWithdrawMessage(ImProtoResponse protoResponse) {
     try {
       C2CWithdrawReq withdraw = C2CWithdrawReq.fromBuffer(protoResponse.payload);
-      info("🗑️ [WITHDRAW] 收到撤回通知, msgId=${withdraw.msgId}, from=${withdraw.from}, to=${withdraw.to}");
-      info("🗑️ 设置消息状态为: ${MessageStatus.withdraw.desc}");
+      info("🗑️ [WITHDRAW（双轨制）] 收到撤回通知");
+      info("   服务端ID: ${withdraw.msgId}");
+      info("   发起人: ${withdraw.from}");
+      info("   接收人: ${withdraw.to}");
+      info("   撤回状态: ${MessageStatus.withdraw.desc}");
 
+      // 双轨制方案1：
+      // 撤回操作使用 serverMsgId，因为：
+      // 1. 此时消息已发送成功，一定有 serverMsgId
+      // 2. 服务端数据库操作也是用 serverMsgId
+      // 3. UI 层会用双ID匹配方法查找消息（优先 clientMsgId，其次 serverMsgId）
       AppEvent.onMessageStatusChanged.add(
-        MessageStatusChangedModel(messageId: withdraw.msgId, messageStatus: MessageStatus.withdraw),
+        MessageStatusChangedModel(
+          messageId: withdraw.msgId, // 使用 serverMsgId
+          messageStatus: MessageStatus.withdraw
+        ),
       );
     } catch (e, stackTrace) {
       error("❌ 解析 WITHDRAW 失败: $e\n$stackTrace");
@@ -377,19 +398,20 @@ class WebSocketService extends GetxService {
   // ==================== 消息ID获取方法已移除 ====================
   // _getNextMsgId() 方法已移除，消息ID现在由服务端生成
 
-  // 发送消息（服务端生成消息ID版本）
+  // 发送消息（双轨制：客户端生成 UUID，服务端生成雪花ID）
   Future<ChatMessage?> sendMessage(ChatMessage message) async {
     try {
-      // 生成临时消息ID（用于客户端跟踪，服务端会替换为真实ID）
-      final tempMsgId = 'temp_${DateTime.now().millisecondsSinceEpoch}_${message.fromUserId}';
-      info("📤 准备发送消息，临时ID: $tempMsgId, 内容: ${message.content}");
+      // 生成客户端消息ID（UUID，全局唯一）
+      final clientMsgId = UuidGenerator.generateClientMsgId();
+      info("📤 准备发送消息，客户端ID: $clientMsgId, 内容: ${message.content}");
       
-      // 使用临时ID更新消息对象
-      message = message.copyWith(msgId: tempMsgId);
+      // 使用客户端ID更新消息对象（服务端ID为空字符串，等待服务端生成）
+      message = message.copyWith(clientMsgId: clientMsgId, msgId: '');
 
-      // 构建 Protobuf C2C 发送消息请求（包含临时ID，让服务端在ACK中返回）
+      // 构建 Protobuf C2C 发送消息请求（双轨制：clientMsgId 由客户端生成，msgId 留空）
       C2CSendReq c2cSendReq = C2CSendReq(
-        msgId: tempMsgId,  // 发送临时ID，服务端需要在ACK中返回此ID
+        clientMsgId: clientMsgId,  // 客户端消息ID（UUID）
+        msgId: '',  // 服务端消息ID（留空，由服务端生成）
         from: message.fromUserId,
         to: message.toUserId,
         format: message.type,
@@ -407,14 +429,14 @@ class WebSocketService extends GetxService {
       // 发送 Protobuf 二进制消息
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel!.sink.add(bytes);
-      info("📤 消息已发送到服务端，等待服务端分配真实消息ID");
+      info("📤 消息已发送到服务端（双轨制），客户端ID: $clientMsgId");
 
-      // 触发消息状态变化事件（发送中）
+      // 触发消息状态变化事件（发送中）- 使用 clientMsgId 作为唯一标识
       AppEvent.onMessageStatusChanged.add(
-        MessageStatusChangedModel(messageId: tempMsgId, messageStatus: MessageStatus.sending),
+        MessageStatusChangedModel(messageId: clientMsgId, messageStatus: MessageStatus.sending),
       );
 
-      return message; // 返回带临时ID的消息对象
+      return message; // 返回带客户端ID的消息对象
     } catch (e, stackTrace) {
       error("❌ 发送消息失败: $e\n$stackTrace");
       return null;
@@ -443,14 +465,15 @@ class WebSocketService extends GetxService {
     AppEvent.onConversationUpdated.add(updatedConversation);
   }
 
-  // 发送接收确认
-  void sendReceivedAck(String msgId, String fromUserId, String toUserId, String chatId) {
+  // 发送接收确认（双轨制：传递两个ID）
+  void sendReceivedAck(String clientMsgId, String serverMsgId, String fromUserId, String toUserId, String chatId) {
     try {
-      info("📥 发送接收确认...");
+      info("📥 发送接收确认（双轨制）...");
 
-      // 构建 ACK 请求
+      // 构建 ACK 请求（双轨制：包含两个ID）
       C2CAckReq ackReq = C2CAckReq(
-        msgId: msgId,
+        clientMsgId: clientMsgId, // 客户端消息ID
+        msgId: serverMsgId, // 服务端消息ID
         from: toUserId, // 注意：发送方和接收方对调
         to: fromUserId,
         status: 3, // 3:未读
@@ -466,20 +489,21 @@ class WebSocketService extends GetxService {
       // 发送
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel?.sink.add(bytes);
-      info("✓ 发送接收确认完成 - status: 未读, msgId: $msgId");
+      info("✓ 发送接收确认完成 - status: 未读, 客户端ID: $clientMsgId, 服务端ID: $serverMsgId");
     } catch (e, stackTrace) {
       error("❌ 发送接收确认失败: $e\n$stackTrace");
     }
   }
 
-  // 发送已读确认
-  void sendReadAck(String msgId, String fromUserId, String toUserId, String chatId) {
+  // 发送已读确认（双轨制：传递两个ID）
+  void sendReadAck(String clientMsgId, String serverMsgId, String fromUserId, String toUserId, String chatId) {
     try {
-      info("👁️ 发送已读确认...");
+      info("👁️ 发送已读确认（双轨制）...");
 
-      // 构建 ACK 请求
+      // 构建 ACK 请求（双轨制：包含两个ID）
       C2CAckReq ackReq = C2CAckReq(
-        msgId: msgId,
+        clientMsgId: clientMsgId, // 客户端消息ID
+        msgId: serverMsgId, // 服务端消息ID
         from: toUserId, // 注意：发送方和接收方对调
         to: fromUserId,
         status: 4, // 4:已读
@@ -495,11 +519,12 @@ class WebSocketService extends GetxService {
       // 发送
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel?.sink.add(bytes);
-      info("✓ 发送已读确认完成 - status: 已读, msgId: $msgId");
+      info("✓ 发送已读确认完成 - status: 已读, 客户端ID: $clientMsgId, 服务端ID: $serverMsgId");
       info("👁️ 设置消息状态为: ${MessageStatus.readed.desc}");
 
+      // 使用 clientMsgId 更新消息状态
       AppEvent.onMessageStatusChanged.add(
-        MessageStatusChangedModel(messageId: msgId, messageStatus: MessageStatus.readed),
+        MessageStatusChangedModel(messageId: clientMsgId, messageStatus: MessageStatus.readed),
       );
     } catch (e, stackTrace) {
       error("❌ 发送已读确认失败: $e\n$stackTrace");

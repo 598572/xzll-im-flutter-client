@@ -74,27 +74,55 @@ class ChatLogic extends GetxController {
   /// 设置消息监听器
   void _setupMessageListeners() {
     // 监听消息状态变化
-    _messageStatusSubscription = AppEvent.onMessageStatusChanged.stream.listen((MessageStatusChangedModel statusModel) {
+    _messageStatusSubscription = AppEvent.onMessageStatusChanged.stream.listen((MessageStatusChangedModel statusModel) async {
       info("📊 收到消息状态更新: ${statusModel.messageId} -> ${statusModel.messageStatus.desc}");
       
-      // 查找要更新的消息（支持临时ID匹配）
-      final index = messages.indexWhere((m) => m.msgId == statusModel.messageId);
+      // ✅ 双轨制查找：优先使用clientMsgId查找，其次使用msgId（serverMsgId）
+      int index = messages.indexWhere((m) => m.clientMsgId == statusModel.messageId);
+      if (index == -1) {
+        // 如果clientMsgId未找到，尝试使用msgId查找（适用于撤回等场景）
+        index = messages.indexWhere((m) => m.msgId == statusModel.messageId);
+      }
+      
       if (index != -1) {
         final oldStatus = messages[index].status;
-        final updatedMessage = messages[index].copyWith(status: statusModel.messageStatus);
+        final oldMessage = messages[index];
+        
+        // 更新消息状态，如果有serverMsgId则同时更新
+        ChatMessage updatedMessage = oldMessage.copyWith(
+          status: statusModel.messageStatus,
+          msgId: statusModel.serverMsgId?.isNotEmpty == true ? statusModel.serverMsgId : oldMessage.msgId,
+        );
+        
         messages[index] = updatedMessage;
         info("✅ 状态更新成功: 位置[$index] ${oldStatus.desc} -> ${statusModel.messageStatus.desc}");
+        info("   clientMsgId: ${updatedMessage.clientMsgId}");
+        info("   msgId: ${updatedMessage.msgId}");
         
-        // 如果状态变为已确认，现在可以保存到数据库
-        if (statusModel.messageStatus == MessageStatus.serverReceived) {
-          info("💾 消息已被服务器确认，保存到数据库");
+        // ✅ 同步更新数据库中的消息状态（双轨制：优先使用clientMsgId）
+        try {
+          await _databaseService.updateMessageStatus(
+            updatedMessage.clientMsgId, 
+            statusModel.messageStatus,
+            serverMsgId: statusModel.serverMsgId
+          );
+          info("💾 消息状态已同步到数据库: ${statusModel.messageStatus.desc}");
+        } catch (e) {
+          error("❌ 同步消息状态到数据库失败: $e");
+        }
+        
+        // 如果是首次收到服务端确认且有完整消息数据，则保存完整消息记录
+        if (statusModel.messageStatus == MessageStatus.serverReceived && 
+            updatedMessage.msgId.isNotEmpty && 
+            updatedMessage.clientMsgId.isNotEmpty) {
+          info("💾 消息已被服务器确认，保存完整消息记录到数据库");
           _saveMessageToDatabase(updatedMessage);
         }
       } else {
         waring("⚠️ 未找到要更新状态的消息: ${statusModel.messageId}");
         info("📱 当前消息列表:");
         for (int i = 0; i < messages.length; i++) {
-          info("   [$i] msgId: ${messages[i].msgId}, status: ${messages[i].status.desc}");
+          info("   [$i] clientMsgId: ${messages[i].clientMsgId}, msgId: ${messages[i].msgId}, status: ${messages[i].status.desc}");
         }
       }
     });
@@ -112,9 +140,10 @@ class ChatLogic extends GetxController {
         // 保存接收到的消息到本地数据库
         _saveMessageToDatabase(message);
         
-        // 发送接收确认
+        // 发送接收确认（双轨制：传递两个ID）
         _webSocketService.sendReceivedAck(
-          message.msgId,
+          message.clientMsgId,  // 客户端消息ID
+          message.msgId,        // 服务端消息ID
           message.fromUserId,
           message.toUserId,
           message.chatId,
@@ -137,9 +166,10 @@ class ChatLogic extends GetxController {
       final targetUserId = conversation.targetUserId!;
       final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
 
-      // 创建消息对象（服务端会生成真实的消息ID）
+      // 创建消息对象（双轨制：WebSocketService会生成clientMsgId，服务端会分配真实的msgId）
       final message = ChatMessage(
-        msgId: '', // 空值，WebSocketService会生成临时ID，服务端会分配真实ID
+        clientMsgId: '', // 空值，WebSocketService会生成UUID作为clientMsgId
+        msgId: '', // 空值，服务端会分配真实的msgId（雪花算法）
         content: content,
         fromUserId: currentUserId,
         toUserId: targetUserId,
@@ -149,7 +179,7 @@ class ChatLogic extends GetxController {
         chatId: chatId,
       );
 
-      // 发送到服务器并获取更新后的消息对象（包含临时msgId）
+      // ✅ 发送到服务器并获取更新后的消息对象（包含clientMsgId）
       ChatMessage? sentMessage = await _webSocketService.sendMessage(message);
 
       if (sentMessage == null) {
@@ -157,15 +187,15 @@ class ChatLogic extends GetxController {
         // 添加失败状态的消息到本地列表
         final failedMessage = message.copyWith(status: MessageStatus.fail);
         messages.add(failedMessage);
-        info("➕ 添加失败消息到界面: msgId=${failedMessage.msgId}, status=${failedMessage.status.desc}");
+        info("➕ 添加失败消息到界面: clientMsgId=${failedMessage.clientMsgId}, msgId=${failedMessage.msgId}, status=${failedMessage.status.desc}");
         Get.snackbar('发送失败', '消息发送失败，请重试', snackPosition: SnackPosition.TOP);
       } else {
         info("✅ 消息已发送到服务端，等待服务端分配真实ID并确认");
-        info("📋 返回的消息（临时ID）: msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
+        info("📋 返回的消息: clientMsgId=${sentMessage.clientMsgId}, msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
         
-        // 添加发送中状态的消息到本地列表（使用临时msgId，服务端确认后会更新为真实ID）
+        // ✅ 添加发送中状态的消息到本地列表（使用WebSocketService返回的完整消息对象）
         messages.add(sentMessage);
-        info("➕ 添加发送中消息到界面: msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
+        info("➕ 添加发送中消息到界面: clientMsgId=${sentMessage.clientMsgId}, msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
         
         // 暂时不保存到数据库，等收到服务端确认和真实ID后再保存
         // _saveMessageToDatabase(sentMessage);
@@ -198,8 +228,11 @@ class ChatLogic extends GetxController {
   void retryMessage(ChatMessage message) {
     if (message.status == MessageStatus.fail) {
       sendTextMessage(message.content);
-      // 移除失败的消息
-      messages.removeWhere((m) => m.msgId == message.msgId);
+      // ✅ 使用双轨制ID移除失败的消息（优先使用clientMsgId）
+      messages.removeWhere((m) => 
+        (message.clientMsgId.isNotEmpty && m.clientMsgId == message.clientMsgId) ||
+        (message.clientMsgId.isEmpty && m.msgId == message.msgId)
+      );
     }
   }
 

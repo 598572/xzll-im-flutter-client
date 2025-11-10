@@ -14,7 +14,7 @@ class DataBaseService extends GetxService {
     try {
       String databasesPath = await getDatabasesPath();
       String path = join(databasesPath, 'xzll_$userId.db');
-      _database = await openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
+      _database = await openDatabase(path, version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
       info("初始化数据库成功");
     } catch (e) {
       error("初始化本地数据库失败：${e.toString()}");
@@ -57,6 +57,7 @@ class DataBaseService extends GetxService {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        clientMsgId TEXT,
         msgId TEXT UNIQUE NOT NULL,
         content TEXT NOT NULL,
         fromUserId TEXT NOT NULL,
@@ -76,6 +77,7 @@ class DataBaseService extends GetxService {
     );
     await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_toUserId ON messages(toUserId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_clientMsgId ON messages(clientMsgId)');
 
     debug("数据库表创建成功");
   }
@@ -91,6 +93,11 @@ class DataBaseService extends GetxService {
     if (oldVersion < 3) {
       // 版本2到版本3：更新会话表结构
       await _upgradeToV3(db);
+    }
+    
+    if (oldVersion < 4) {
+      // 版本3到版本4：添加双轨制ID支持
+      await _upgradeToV4(db);
     }
   }
   
@@ -220,6 +227,74 @@ class DataBaseService extends GetxService {
       debug("数据库升级到V3完成");
     } catch (e) {
       error("会话表升级失败: $e");
+      rethrow;
+    }
+  }
+  
+  /// 升级到版本4：添加双轨制ID支持（clientMsgId字段）
+  Future<void> _upgradeToV4(Database db) async {
+    try {
+      // 1. 创建新的messages表，包含clientMsgId字段
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS messages_v4 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          clientMsgId TEXT,
+          msgId TEXT UNIQUE NOT NULL,
+          content TEXT NOT NULL,
+          fromUserId TEXT NOT NULL,
+          toUserId TEXT NOT NULL,
+          type INTEGER NOT NULL,
+          status INTEGER DEFAULT 1,
+          timestamp TEXT NOT NULL,
+          withdrawStatus INTEGER DEFAULT 0,
+          chatId TEXT NOT NULL,
+          created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+      ''');
+      
+      // 2. 检查旧表是否存在数据
+      final List<Map<String, dynamic>> oldData = await db.query('messages');
+      
+      if (oldData.isNotEmpty) {
+        // 3. 迁移旧数据到新表，为旧数据生成UUID作为clientMsgId
+        Batch batch = db.batch();
+        for (Map<String, dynamic> row in oldData) {
+          // 为旧消息生成clientMsgId（使用msgId + 时间戳作为简单的唯一标识）
+          String clientMsgId = 'legacy_${row['msgId']}_${DateTime.now().millisecondsSinceEpoch}';
+          
+          batch.insert('messages_v4', {
+            'clientMsgId': clientMsgId, // 新字段：为旧数据生成clientMsgId
+            'msgId': row['msgId'],
+            'content': row['content'],
+            'fromUserId': row['fromUserId'],
+            'toUserId': row['toUserId'],
+            'type': row['type'],
+            'status': row['status'],
+            'timestamp': row['timestamp'],
+            'withdrawStatus': row['withdrawStatus'],
+            'chatId': row['chatId'],
+            'created_at': row['created_at'],
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await batch.commit(noResult: true);
+        debug("迁移 ${oldData.length} 条消息数据到V4，并生成clientMsgId");
+      }
+      
+      // 4. 删除旧表
+      await db.execute('DROP TABLE IF EXISTS messages');
+      
+      // 5. 重命名新表为正式表
+      await db.execute('ALTER TABLE messages_v4 RENAME TO messages');
+      
+      // 6. 重建索引
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_fromUserId ON messages(fromUserId)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_toUserId ON messages(toUserId)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_clientMsgId ON messages(clientMsgId)'); // 新增clientMsgId索引
+      
+      debug("数据库升级到V4完成 - 添加双轨制ID支持");
+    } catch (e) {
+      error("数据库升级到V4失败: $e");
       rethrow;
     }
   }
@@ -402,46 +477,129 @@ class DataBaseService extends GetxService {
     }).toList();
   }
 
-  /// 更新消息状态
-  Future<void> updateMessageStatus(String msgId, MessageStatus status) async {
+  /// 更新消息状态（双轨制：优先使用clientMsgId，其次使用msgId）
+  Future<void> updateMessageStatus(String messageId, MessageStatus status, {String? serverMsgId}) async {
     if (_database == null) {
       error("数据库未初始化");
       return;
     }
 
-    await _database!.update(
+    // 构建更新数据
+    Map<String, dynamic> updateData = {'status': status.code};
+    if (serverMsgId != null && serverMsgId.isNotEmpty) {
+      updateData['msgId'] = serverMsgId; // 同时更新serverMsgId
+    }
+
+    // 双轨制查找：优先使用clientMsgId
+    int count = await _database!.update(
       'messages',
-      {'status': status.code},
-      where: 'msg_id = ?',
-      whereArgs: [msgId],
+      updateData,
+      where: 'clientMsgId = ?',
+      whereArgs: [messageId],
     );
-    debug("消息状态已更新: $msgId -> ${status.desc}");
+    
+    // 如果clientMsgId未找到，使用msgId查找
+    if (count == 0) {
+      count = await _database!.update(
+        'messages',
+        updateData,
+        where: 'msgId = ?',
+        whereArgs: [messageId],
+      );
+    }
+    
+    if (count > 0) {
+      debug("消息状态已更新: $messageId -> ${status.desc}${serverMsgId != null ? ' (serverMsgId: $serverMsgId)' : ''}");
+    } else {
+      debug("未找到要更新的消息: $messageId");
+    }
   }
 
-  /// 撤回消息
-  Future<void> withdrawMessage(String msgId) async {
+  /// 通过clientMsgId更新消息状态
+  Future<void> updateMessageStatusByClientId(String clientMsgId, MessageStatus status, {String? serverMsgId}) async {
     if (_database == null) {
       error("数据库未初始化");
       return;
     }
 
-    await _database!.update(
+    Map<String, dynamic> updateData = {'status': status.code};
+    if (serverMsgId != null && serverMsgId.isNotEmpty) {
+      updateData['msgId'] = serverMsgId; // 同时更新serverMsgId
+    }
+
+    int count = await _database!.update(
       'messages',
-      {'withdraw_status': MessageWithdrawStatus.yes.code},
-      where: 'msg_id = ?',
-      whereArgs: [msgId],
+      updateData,
+      where: 'clientMsgId = ?',
+      whereArgs: [clientMsgId],
     );
-    debug("消息已撤回: $msgId");
+    
+    if (count > 0) {
+      debug("消息状态已更新(clientMsgId): $clientMsgId -> ${status.desc}${serverMsgId != null ? ' (serverMsgId: $serverMsgId)' : ''}");
+    } else {
+      debug("未找到要更新的消息(clientMsgId): $clientMsgId");
+    }
   }
 
-  /// 删除消息
-  Future<void> deleteMessage(String msgId) async {
+  /// 撤回消息（双轨制：优先使用clientMsgId，其次使用msgId）
+  Future<void> withdrawMessage(String messageId) async {
     if (_database == null) {
       error("数据库未初始化");
       return;
     }
 
-    await _database!.delete('messages', where: 'msg_id = ?', whereArgs: [msgId]);
-    debug("消息已删除: $msgId");
+    // 双轨制查找：优先使用clientMsgId
+    int count = await _database!.update(
+      'messages',
+      {'withdrawStatus': MessageWithdrawStatus.yes.code},
+      where: 'clientMsgId = ?',
+      whereArgs: [messageId],
+    );
+    
+    // 如果clientMsgId未找到，使用msgId查找
+    if (count == 0) {
+      count = await _database!.update(
+        'messages',
+        {'withdrawStatus': MessageWithdrawStatus.yes.code},
+        where: 'msgId = ?',
+        whereArgs: [messageId],
+      );
+    }
+    
+    if (count > 0) {
+      debug("消息已撤回: $messageId");
+    } else {
+      debug("未找到要撤回的消息: $messageId");
+    }
+  }
+
+  /// 删除消息（双轨制：优先使用clientMsgId，其次使用msgId）
+  Future<void> deleteMessage(String messageId) async {
+    if (_database == null) {
+      error("数据库未初始化");
+      return;
+    }
+
+    // 双轨制查找：优先使用clientMsgId
+    int count = await _database!.delete(
+      'messages', 
+      where: 'clientMsgId = ?', 
+      whereArgs: [messageId]
+    );
+    
+    // 如果clientMsgId未找到，使用msgId查找
+    if (count == 0) {
+      count = await _database!.delete(
+        'messages', 
+        where: 'msgId = ?', 
+        whereArgs: [messageId]
+      );
+    }
+    
+    if (count > 0) {
+      debug("消息已删除: $messageId");
+    } else {
+      debug("未找到要删除的消息: $messageId");
+    }
   }
 }
