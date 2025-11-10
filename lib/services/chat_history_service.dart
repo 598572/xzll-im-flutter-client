@@ -64,6 +64,7 @@ class ChatHistoryResponse {
   /// 解析服务端消息格式到ChatMessage
   static ChatMessage _parseMessageFromJson(Map<String, dynamic> json) {
     return ChatMessage(
+      clientMsgId: '', // ✅ 历史消息没有clientMsgId（服务端不存储），设置为空
       msgId: json['msgId']?.toString() ?? '',
       content: json['content'] ?? '',
       fromUserId: json['fromUserId']?.toString() ?? '',

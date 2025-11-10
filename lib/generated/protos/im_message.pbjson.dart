@@ -1,6 +1,6 @@
 // This is a generated file - do not edit.
 //
-// Generated from im_message.proto.
+// Generated from protos/im_message.proto.
 
 // @dart = 3.3
 

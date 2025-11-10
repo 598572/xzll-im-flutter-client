@@ -63,24 +63,30 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _setupMessageStatusListener() {
-    // 监听消息状态变化
-    WebSocketService.instance.onMessageStatusChanged = (String msgId, MessageStatus status) {
-      info("📊 消息状态更新: $msgId -> ${status.desc}");
+    // 监听消息状态变化（双轨制：支持用 clientMsgId 或 serverMsgId 匹配）
+    WebSocketService.instance.onMessageStatusChanged = (String msgId, MessageStatus status, {String? serverMsgId}) {
+      info("📊 消息状态更新: msgId=$msgId, status=${status.desc}, serverMsgId=$serverMsgId");
       // 检查Widget是否还在树中
       if (mounted) {
         setState(() {
-          int index = messages.indexWhere((m) => m.msgId == msgId);
+          // 双轨制方案1：使用双ID匹配方法查找消息
+          int index = MessageIdUpdater.findMessageIndex(messages, msgId);
+          
           if (index != -1) {
-            messages[index] = ChatMessage(
-              msgId: messages[index].msgId,
-              content: messages[index].content,
-              fromUserId: messages[index].fromUserId,
-              toUserId: messages[index].toUserId,
-              type: messages[index].type,
+            // 更新消息状态
+            ChatMessage updatedMessage = messages[index].copyWith(
               status: status,
-              timestamp: messages[index].timestamp,
-              withdrawStatus: messages[index].withdrawStatus,
             );
+            
+            // ✅ 如果携带了 serverMsgId，说明这是 SERVER_ACK，需要更新 serverMsgId
+            if (serverMsgId != null && serverMsgId.isNotEmpty) {
+              info("✅ 收到 SERVER_ACK，更新 serverMsgId: $serverMsgId");
+              updatedMessage = updatedMessage.copyWith(msgId: serverMsgId);
+            }
+            
+            messages[index] = updatedMessage;
+          } else {
+            waring("⚠️ 未找到消息: $msgId");
           }
         });
       } else {
@@ -131,15 +137,17 @@ class _ChatScreenState extends State<ChatScreen> {
     info("  💬 会话userId: ${widget.conversation.userId}");
     info("  👤 会话targetUserId: ${widget.conversation.targetUserId}");
 
-    // 创建消息（使用真实的消息ID和发送中状态）
+    // 创建消息（双轨制：clientMsgId待生成，msgId待服务端分配）
     ChatMessage message = ChatMessage(
-      msgId: msgId,
+      clientMsgId: '', // 空值，待WebSocketService生成
+      msgId: msgId, // 临时使用msgId，实际会被WebSocketService替换
       content: content,
       fromUserId: currentUserId,
       toUserId: targetUserId,
       type: MessageType.text,
       status: MessageStatus.sending, // 使用sending作为发送中状态
       timestamp: DateTime.now(),
+      chatId: '', // chatId需要添加
     );
 
     if (mounted) {
@@ -153,20 +161,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!success) {
       info("❌ 发送消息失败，更新消息状态为失败");
-      // 更新消息状态为失败
+      // 更新消息状态为失败（双轨制：使用双ID匹配）
       if (mounted) {
         setState(() {
-          int index = messages.indexWhere((m) => m.msgId == msgId);
+          int index = MessageIdUpdater.findMessageIndex(messages, msgId);
           if (index != -1) {
-            messages[index] = ChatMessage(
-              msgId: messages[index].msgId,
-              content: messages[index].content,
-              fromUserId: messages[index].fromUserId,
-              toUserId: messages[index].toUserId,
-              type: messages[index].type,
+            messages[index] = messages[index].copyWith(
               status: MessageStatus.fail,
-              timestamp: messages[index].timestamp,
-              withdrawStatus: messages[index].withdrawStatus,
             );
           }
         });

@@ -3,10 +3,11 @@ import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
 
 part 'chat_message.g.dart';
 
-/// 消息模型
+/// 消息模型（双轨制：clientMsgId + serverMsgId）
 @JsonSerializable()
 class ChatMessage {
-  final String msgId;
+  final String clientMsgId; // 客户端消息ID（UUID，客户端生成，用于去重和关联）
+  final String msgId; // 服务端消息ID（雪花算法，服务端生成，用于存储和排序）
   final String content;
   final String fromUserId;
   final String toUserId;
@@ -18,6 +19,7 @@ class ChatMessage {
   final String chatId; // 会话ID
 
   ChatMessage({
+    required this.clientMsgId,
     required this.msgId,
     required this.content,
     required this.fromUserId,
@@ -35,6 +37,7 @@ class ChatMessage {
 
   // 添加copyWith方法
   ChatMessage copyWith({
+    String? clientMsgId,
     String? msgId,
     String? content,
     String? fromUserId,
@@ -46,6 +49,7 @@ class ChatMessage {
     String? chatId,
   }) {
     return ChatMessage(
+      clientMsgId: clientMsgId ?? this.clientMsgId,
       msgId: msgId ?? this.msgId,
       content: content ?? this.content,
       fromUserId: fromUserId ?? this.fromUserId,

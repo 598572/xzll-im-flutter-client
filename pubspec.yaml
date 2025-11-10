@@ -36,6 +36,7 @@ dependencies:
   # Protobuf 支持 (使用较新版本)
   protobuf: ^5.0.0
   fixnum: ^1.1.0
+  uuid: ^4.5.2
 
 dev_dependencies:
   flutter_test:
