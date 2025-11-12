@@ -18,6 +18,7 @@ import 'package:xzll_im_flutter_client/models/enum/connectivity_status.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_type.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
+import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/utils/uuid_generator.dart';
 
 /// WebSocket服务类 - Protobuf版本
@@ -26,6 +27,9 @@ class WebSocketService extends GetxService {
 
   // ✅ 延迟获取 AppData，避免在 WebSocketService 初始化时 AppData 还未注册
   AppData get appData => Get.find<AppData>();
+  
+  // ✅ 数据库服务，用于保存消息
+  DataBaseService get _databaseService => Get.find<DataBaseService>();
 
   String get _currentUserId => appData.user.value.id;
 
@@ -238,10 +242,16 @@ class WebSocketService extends GetxService {
         status: MessageStatus.unRead, // 接收到的消息显示为未读状态
       );
 
+      // ✅ 发送事件通知（给打开的聊天界面）
       AppEvent.onMessageReceived.add(message);
+
+      // ✅ 保存消息到本地数据库（关键修复！）
+      _saveMessageToDatabase(message);
 
       // 自动发送接收确认（双轨制：传递两个ID）
       sendReceivedAck(pushMsg.clientMsgId, pushMsg.msgId, pushMsg.from, pushMsg.to, pushMsg.chatId);
+      
+      // 更新会话列表
       _updateConversationOnNewMessage(message);
     } catch (e, stackTrace) {
       error("❌ 解析 C2CMsgPush 失败: $e\n$stackTrace");
@@ -440,6 +450,36 @@ class WebSocketService extends GetxService {
     } catch (e, stackTrace) {
       error("❌ 发送消息失败: $e\n$stackTrace");
       return null;
+    }
+  }
+
+  /// 保存消息到本地数据库
+  Future<void> _saveMessageToDatabase(ChatMessage message) async {
+    try {
+      info("💾 保存消息到数据库: msgId=${message.msgId}, content=${message.content}");
+      await _databaseService.insertMessage(message);
+      
+      // 同时更新会话信息
+      Conversation updatedConversation = Conversation(
+        name: message.fromUserId,
+        headImage: 'assets/other_headImage.png',
+        lastMessage: formatLastMessage(message),
+        timestamp: formatMessageTimestamp(message.timestamp),
+        userId: message.fromUserId,
+        unreadCount: 1,
+        targetUserId: message.fromUserId,
+        targetUserName: message.fromUserId,
+        targetUserAvatar: 'assets/other_headImage.png',
+        lastMsgFormat: MessageType.fromCode(message.type),
+        lastMsgId: message.msgId,
+        lastMsgTime: message.timestamp.millisecondsSinceEpoch,
+        chatId: message.chatId,
+      );
+      
+      await _databaseService.insertOrUpdateConversation(updatedConversation);
+      info("✅ 消息和会话已保存到数据库");
+    } catch (e) {
+      error("❌ 保存消息到数据库失败: $e");
     }
   }
 
