@@ -8,6 +8,7 @@ import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/models/domain/message_status_changed_model.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 import 'package:xzll_im_flutter_client/services/websocket_service.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/services/chat_history_service.dart';
@@ -52,23 +53,38 @@ class ChatLogic extends GetxController {
     // 从路由参数中获取会话对象
     conversation = Get.arguments as Conversation;
     
-    // 初始化WebSocket连接和监听器
-    _initializeWebSocket();
+    // ✅ 设置当前打开的会话ID（用于上下文感知的ACK）
+    final currentUserId = _appData.user.value.id;
+    final targetUserId = conversation.targetUserId ?? '';
+    if (currentUserId.isNotEmpty && targetUserId.isNotEmpty) {
+      final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
+      AppEvent.currentOpenChatId.add(chatId);
+      info("🔓 设置当前打开会话: $chatId");
+    }
+    
+    // ✅ 优化：不在聊天界面重复初始化WebSocket
+    // WebSocket 应该在应用启动时初始化，这里只需确保已连接
+    _ensureWebSocketConnected();
     _setupMessageListeners();
     
     // 加载历史消息
     _loadHistoryMessages();
   }
 
-  /// 初始化WebSocket连接
-  Future<void> _initializeWebSocket() async {
+  /// 确保WebSocket已连接（不重复初始化）
+  Future<void> _ensureWebSocketConnected() async {
     if (!_appData.isLoggedIn) {
-      error('❌ 用户未登录，无法连接WebSocket');
+      error('❌ 用户未登录，无法使用WebSocket');
       return;
     }
 
-    info("🔗 开始连接WebSocket...");
-    await _webSocketService.initWebSocket();
+    // ✅ 只检查连接状态，不重复初始化
+    if (AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
+      info("⚠️ WebSocket未连接，尝试初始化...");
+      await _webSocketService.initWebSocket();
+    } else {
+      info("✅ WebSocket已连接，可以正常使用");
+    }
   }
 
   /// 设置消息监听器
@@ -140,16 +156,11 @@ class ChatLogic extends GetxController {
         // 保存接收到的消息到本地数据库
         _saveMessageToDatabase(message);
         
-        // ✅ 会话界面打开时，自动发送已读确认（不是接收确认）
-        // WebSocketService 已经自动发送了接收确认(未读ACK)，这里只需要发送已读ACK
-        info("👁️ 会话界面打开中，自动发送已读确认");
-        _webSocketService.sendReadAck(
-          message.clientMsgId,  // 客户端消息ID
-          message.msgId,        // 服务端消息ID
-          message.fromUserId,
-          message.toUserId,
-          message.chatId,
-        );
+        // ✅ 由于采用了"上下文感知ACK"，WebSocketService 已根据会话打开状态自动发送了正确的ACK
+        // 会话打开时→直接发送已读ACK（status=4）
+        // 会话未打开时→发送未读ACK（status=3）
+        // 因此这里不需要再次发送ACK
+        info("✅ WebSocketService已根据会话状态自动发送ACK，无需重复发送");
       }
     });
   }
@@ -300,7 +311,6 @@ class ChatLogic extends GetxController {
           message.msgId,
           message.fromUserId,
           message.toUserId,
-          message.chatId,
         );
       }
     }
@@ -430,6 +440,10 @@ class ChatLogic extends GetxController {
 
   @override
   void onClose() {
+    // ✅ 清空当前打开的会话ID
+    AppEvent.currentOpenChatId.add('');
+    info("🔒 清空当前打开会话");
+    
     textController.dispose();
     scrollController.dispose();
     

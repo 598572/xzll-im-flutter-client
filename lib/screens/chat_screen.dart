@@ -4,7 +4,6 @@ import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
-import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
 import 'package:xzll_im_flutter_client/models/domain/message_status_changed_model.dart';
 import '../models/domain/chat_message.dart';
 import '../models/domain/conversation.dart';
@@ -55,7 +54,6 @@ class _ChatScreenState extends State<ChatScreen> {
           message.msgId,
           message.fromUserId,
           message.toUserId,
-          message.chatId,
         );
       }
     }
@@ -126,7 +124,6 @@ class _ChatScreenState extends State<ChatScreen> {
             message.msgId,
             message.fromUserId,
             message.toUserId,
-            message.chatId,
           );
         }
       } else {

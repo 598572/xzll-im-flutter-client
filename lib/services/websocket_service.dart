@@ -20,6 +20,8 @@ import 'package:xzll_im_flutter_client/models/enum/message_type.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/utils/uuid_generator.dart';
+import 'package:xzll_im_flutter_client/utils/proto_converter_util.dart';
+import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
 
 /// WebSocket服务类 - Protobuf版本
 class WebSocketService extends GetxService {
@@ -39,13 +41,11 @@ class WebSocketService extends GetxService {
   // final List<String> _msgIds = [];  // 已删除
   // bool _isGettingMsgIds = false;    // 已删除
 
-  // 心跳相关
+  // 心跳相关（优化版：移除应用层心跳，仅保留连接健康检查）
   Timer? _heartbeatTimer;
-  Timer? _heartbeatTimeoutTimer;
   DateTime? _lastHeartbeatTime;
-  static const Duration _heartbeatInterval = Duration(seconds: 25); // 心跳间隔25秒（服务器30秒空闲检测）
-  static const Duration _heartbeatTimeout = Duration(seconds: 10); // 心跳超时10秒
-  bool _isWaitingForPong = false;
+  static const Duration _heartbeatInterval = Duration(seconds: 25); // 心跳检查间隔25秒（服务器30秒空闲检测）
+  // ✅ 已移除：_heartbeatTimeoutTimer, _isWaitingForPong（不再需要应用层超时检测）
   
   // ✅ 自动重连增强
   Timer? _reconnectTimer; // 重连定时器
@@ -86,9 +86,27 @@ class WebSocketService extends GetxService {
 
   ///初始化WebSocket
   Future<void> initWebSocket() async {
+    // ✅ 检查是否已经连接，避免重复初始化
+    if (_channel != null && AppEvent.webSocketStatus.value == WebSocketStatus.connected) {
+      info("✅ WebSocket已连接，无需重复初始化");
+      return;
+    }
+    
     if (appData.token.isEmpty || appData.user.value.id.isEmpty || appData.refreshToken.isEmpty) {
       waring("⚠️ 用户未登录，无法初始化WebSocket");
       return;
+    }
+    
+    // ✅ 如果有旧连接，先关闭
+    if (_channel != null) {
+      info("⚠️ 检测到旧连接，先关闭");
+      try {
+        await _channel!.sink.close();
+      } catch (e) {
+        error("关闭旧连接失败: $e");
+      }
+      _channel = null;
+      _stopHeartbeat();
     }
     
     final wsUrl = AppConfig.getWebSocketUrl(_currentUserId);
@@ -100,6 +118,7 @@ class WebSocketService extends GetxService {
     };
     
     try {
+      info("🔗 开始建立WebSocket连接...");
       AppEvent.webSocketStatus.add(WebSocketStatus.connecting);
       _channel = IOWebSocketChannel.connect(wsUrl, headers: headers);
       AppEvent.webSocketStatus.add(WebSocketStatus.connected);
@@ -181,9 +200,11 @@ class WebSocketService extends GetxService {
   // 处理接收到的消息
   void _onData(dynamic message) {
     try {
-      // 检查是否是心跳响应（字符串形式）
-      if (message is String && message == "pong") {
-        _handleHeartbeatResponse();
+      // ✅ 已移除应用层心跳响应处理
+      // WebSocketChannel 会自动处理协议层的 pong 帧
+      // 如果收到文本消息，说明是异常情况
+      if (message is String) {
+        waring("⚠️ 收到意外的文本消息: $message");
         return;
       }
       
@@ -248,44 +269,61 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 处理推送消息（单聊消息）- 双轨制
+  /// 处理推送消息（单聊消息）- 双轨制（优化后：适配bytes/fixed64，chatId动态生成）
   void _handlePushMsg(ImProtoResponse protoResponse) {
     try {
       C2CMsgPush pushMsg = C2CMsgPush.fromBuffer(protoResponse.payload);
 
+      // 类型转换：bytes/fixed64 -> String
+      String clientMsgId = ProtoConverterUtil.bytesToUuidString(pushMsg.clientMsgId);
+      String msgId = ProtoConverterUtil.int64ToSnowflakeString(pushMsg.msgId);
+      String from = ProtoConverterUtil.int64ToSnowflakeString(pushMsg.from);
+      String to = ProtoConverterUtil.int64ToSnowflakeString(pushMsg.to);
+      // chatId动态生成（与服务端逻辑一致）
+      String chatId = ChatIdUtils.generateC2CChatId(from, to);
+
+      // ✅ 上下文感知：根据会话打开状态决定消息初始状态
+      String messageChatId = chatId;
+      String currentOpenChatId = AppEvent.currentOpenChatId.value;
+      bool isChatOpen = messageChatId == currentOpenChatId && currentOpenChatId.isNotEmpty;
+      MessageStatus initialStatus = isChatOpen ? MessageStatus.readed : MessageStatus.unRead;
+      
       info("============================================");
-      info("【收到单聊消息（双轨制）】");
-      info("  客户端消息ID: ${pushMsg.clientMsgId}");
-      info("  服务端消息ID: ${pushMsg.msgId}");
-      info("  发送人: ${pushMsg.from}");
-      info("  接收人: ${pushMsg.to}");
+      info("【收到单聊消息（双轨制优化版）】");
+      info("  客户端消息ID: $clientMsgId");
+      info("  服务端消息ID: $msgId");
+      info("  发送人: $from");
+      info("  接收人: $to");
       info("  消息格式: ${pushMsg.format}");
       info("  消息内容: ${pushMsg.content}");
       info("  时间戳: ${pushMsg.time}");
-      info("  会话ID: ${pushMsg.chatId}");
+      info("  会话ID(动态): $chatId");
+      info("  当前打开会话: $currentOpenChatId");
+      info("  会话是否打开: $isChatOpen");
+      info("  初始状态: ${initialStatus.desc}");
       info("============================================");
 
-      // 转换为ChatMessage（双轨制：保存两个ID）
+      // 转换为ChatMessage（双轨制：保存两个ID，状态根据会话打开状态决定）
       ChatMessage message = ChatMessage(
-        clientMsgId: pushMsg.clientMsgId, // 客户端消息ID
-        msgId: pushMsg.msgId, // 服务端消息ID
-        fromUserId: pushMsg.from,
-        toUserId: pushMsg.to,
+        clientMsgId: clientMsgId, // 客户端消息ID
+        msgId: msgId, // 服务端消息ID
+        fromUserId: from,
+        toUserId: to,
         content: pushMsg.content,
         timestamp: DateTime.fromMillisecondsSinceEpoch(pushMsg.time.toInt()),
         type: pushMsg.format,
-        chatId: pushMsg.chatId,
-        status: MessageStatus.unRead, // 接收到的消息显示为未读状态
+        chatId: chatId, // 动态生成的chatId
+        status: initialStatus, // ✅ 根据会话打开状态决定初始状态
       );
 
       // ✅ 发送事件通知（给打开的聊天界面）
       AppEvent.onMessageReceived.add(message);
 
-      // ✅ 保存消息到本地数据库（关键修复！）
+      // ✅ 保存消息到本地数据库（状态已经是正确的）
       _saveMessageToDatabase(message);
 
-      // 自动发送接收确认（双轨制：传递两个ID）
-      sendReceivedAck(pushMsg.clientMsgId, pushMsg.msgId, pushMsg.from, pushMsg.to, pushMsg.chatId);
+      // ✅ 上下文感知ACK：自动根据会话打开状态发送智能ACK
+      _sendSmartAck(clientMsgId, msgId, from, to);
       
       // 更新会话列表
       _updateConversationOnNewMessage(message);
@@ -297,10 +335,15 @@ class WebSocketService extends GetxService {
   // ==================== 批量消息ID处理已移除 ====================
   // _handleBatchMsgIds 方法已移除，消息ID现在由服务端在接收消息时生成
 
-  /// 处理ACK消息 - 双轨制（使用 clientMsgId 匹配，更新 serverMsgId）
+  /// 处理ACK消息 - 双轨制（使用 clientMsgId 匹配，更新 serverMsgId）（优化后：适配bytes/fixed64）
   void _handleAckMessage(ImProtoResponse protoResponse) {
     try {
       C2CAckReq ack = C2CAckReq.fromBuffer(protoResponse.payload);
+      
+      // 类型转换：bytes/fixed64 -> String
+      String clientMsgId = ProtoConverterUtil.bytesToUuidString(ack.clientMsgId);
+      String msgId = ProtoConverterUtil.int64ToSnowflakeString(ack.msgId);
+      
       int status = ack.status;
       String statusText;
       MessageStatus messageStatus;
@@ -323,7 +366,7 @@ class WebSocketService extends GetxService {
         messageStatus = MessageStatus.unRead; // 未知状态默认显示未读
       }
 
-      info("★★★ [收到ACK（双轨制）] 客户端ID=${ack.clientMsgId}, 服务端ID=${ack.msgId}, 状态=$statusText ★★★");
+      info("★★★ [收到ACK（双轨制优化版）] 客户端ID=$clientMsgId, 服务端ID=$msgId, 状态=$statusText ★★★");
       
       // 双轨制方案1：
       // 1. 使用 clientMsgId 匹配消息
@@ -331,9 +374,9 @@ class WebSocketService extends GetxService {
       // 3. 更新消息状态
       AppEvent.onMessageStatusChanged.add(
         MessageStatusChangedModel(
-          messageId: ack.clientMsgId, 
+          messageId: clientMsgId, 
           messageStatus: messageStatus,
-          serverMsgId: ack.msgId.isNotEmpty ? ack.msgId : null, // ✅ 传递 serverMsgId
+          serverMsgId: msgId.isNotEmpty ? msgId : null, // ✅ 传递 serverMsgId
         ),
       );
     } catch (e, stackTrace) {
@@ -341,14 +384,20 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 处理撤回消息 - 双轨制（使用 serverMsgId 匹配）
+  /// 处理撤回消息 - 双轨制（使用 serverMsgId 匹配）（优化后：适配fixed64）
   void _handleWithdrawMessage(ImProtoResponse protoResponse) {
     try {
       C2CWithdrawReq withdraw = C2CWithdrawReq.fromBuffer(protoResponse.payload);
-      info("🗑️ [WITHDRAW（双轨制）] 收到撤回通知");
-      info("   服务端ID: ${withdraw.msgId}");
-      info("   发起人: ${withdraw.from}");
-      info("   接收人: ${withdraw.to}");
+      
+      // 类型转换：fixed64 -> String
+      String msgId = ProtoConverterUtil.int64ToSnowflakeString(withdraw.msgId);
+      String from = ProtoConverterUtil.int64ToSnowflakeString(withdraw.from);
+      String to = ProtoConverterUtil.int64ToSnowflakeString(withdraw.to);
+      
+      info("🗑️ [WITHDRAW（双轨制优化版）] 收到撤回通知");
+      info("   服务端ID: $msgId");
+      info("   发起人: $from");
+      info("   接收人: $to");
       info("   撤回状态: ${MessageStatus.withdraw.desc}");
 
       // 双轨制方案1：
@@ -358,7 +407,7 @@ class WebSocketService extends GetxService {
       // 3. UI 层会用双ID匹配方法查找消息（优先 clientMsgId，其次 serverMsgId）
       AppEvent.onMessageStatusChanged.add(
         MessageStatusChangedModel(
-          messageId: withdraw.msgId, // 使用 serverMsgId
+          messageId: msgId, // 使用转换后的 serverMsgId String
           messageStatus: MessageStatus.withdraw
         ),
       );
@@ -367,16 +416,21 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 处理好友请求
+  /// 处理好友请求（优化后：适配fixed64）
   void _handleFriendRequest(ImProtoResponse protoResponse) {
     try {
       FriendRequestPush request = FriendRequestPush.fromBuffer(protoResponse.payload);
 
+      // 类型转换：fixed64 -> String, bytes -> UUID String
+      String toUserId = ProtoConverterUtil.int64ToSnowflakeString(request.toUserId);
+      String requestId = ProtoConverterUtil.bytesToUuidString(request.requestId); // UUID bytes -> String
+      String fromUserId = ProtoConverterUtil.int64ToSnowflakeString(request.fromUserId);
+
       info("============================================");
-      info("📨 收到好友请求:");
-      info("  申请人: ${request.fromUserName} (${request.fromUserId})");
+      info("📨 收到好友请求(优化版):");
+      info("  申请人: ${request.fromUserName} ($fromUserId)");
       info("  申请消息: ${request.requestMessage}");
-      info("  请求ID: ${request.requestId}");
+      info("  请求ID: $requestId");
       info("  申请人头像: ${request.fromUserAvatar}");
       info("  状态: ${request.status}");
       info("  创建时间: ${request.createTime}");
@@ -387,11 +441,11 @@ class WebSocketService extends GetxService {
       // 转换为FriendRequestPushMessage
       FriendRequestPushMessage pushMessage = FriendRequestPushMessage(
         pushType: 1, // 1-新的好友申请
-        requestId: request.requestId,
-        fromUserId: request.fromUserId,
+        requestId: requestId,
+        fromUserId: fromUserId,
         fromUserName: request.fromUserName,
         fromUserAvatar: request.fromUserAvatar,
-        toUserId: request.toUserId,
+        toUserId: toUserId,
         requestMessage: request.requestMessage,
         pushTitle: request.pushTitle,
         pushContent: request.pushContent,
@@ -405,15 +459,20 @@ class WebSocketService extends GetxService {
     }
   }
 
-  /// 处理好友响应
+  /// 处理好友响应（优化后：适配fixed64）
   void _handleFriendResponse(ImProtoResponse protoResponse) {
     try {
       FriendResponsePush response = FriendResponsePush.fromBuffer(protoResponse.payload);
 
+      // 类型转换：fixed64 -> String, bytes -> UUID String
+      String toUserId = ProtoConverterUtil.int64ToSnowflakeString(response.toUserId);
+      String requestId = ProtoConverterUtil.bytesToUuidString(response.requestId); // UUID bytes -> String
+      String fromUserId = ProtoConverterUtil.int64ToSnowflakeString(response.fromUserId);
+
       info("============================================");
-      info("📬 收到好友申请响应:");
-      info("  响应人: ${response.fromUserName} (${response.fromUserId})");
-      info("  请求ID: ${response.requestId}");
+      info("📬 收到好友申请响应(优化版):");
+      info("  响应人: ${response.fromUserName} ($fromUserId)");
+      info("  请求ID: $requestId");
       info("  结果: ${response.status == 1 ? '✅ 已同意' : '❌ 已拒绝'}");
       info("  推送标题: ${response.pushTitle}");
       info("  推送内容: ${response.pushContent}");
@@ -422,11 +481,11 @@ class WebSocketService extends GetxService {
       // 转换为FriendRequestPushMessage
       FriendRequestPushMessage pushMessage = FriendRequestPushMessage(
         pushType: 2, // 2-好友申请处理结果
-        requestId: response.requestId,
-        fromUserId: response.fromUserId,
+        requestId: requestId,
+        fromUserId: fromUserId,
         fromUserName: response.fromUserName,
         fromUserAvatar: response.fromUserAvatar,
-        toUserId: response.toUserId,
+        toUserId: toUserId,
         requestMessage: response.pushContent,
         pushTitle: response.pushTitle,
         pushContent: response.pushContent,
@@ -444,26 +503,26 @@ class WebSocketService extends GetxService {
   // ==================== 消息ID获取方法已移除 ====================
   // _getNextMsgId() 方法已移除，消息ID现在由服务端生成
 
-  // 发送消息（双轨制：客户端生成 UUID，服务端生成雪花ID）
+  // 发送消息（双轨制：客户端生成 UUID，服务端生成雪花ID）（优化后：适配bytes/fixed64，chatId不传）
   Future<ChatMessage?> sendMessage(ChatMessage message) async {
     try {
       // 生成客户端消息ID（UUID，全局唯一）
       final clientMsgId = UuidGenerator.generateClientMsgId();
-      info("📤 准备发送消息，客户端ID: $clientMsgId, 内容: ${message.content}");
+      info("📤 准备发送消息(优化版)，客户端ID: $clientMsgId, 内容: ${message.content}");
       
       // 使用客户端ID更新消息对象（服务端ID为空字符串，等待服务端生成）
       message = message.copyWith(clientMsgId: clientMsgId, msgId: '');
 
-      // 构建 Protobuf C2C 发送消息请求（双轨制：clientMsgId 由客户端生成，msgId 留空）
+      // 构建 Protobuf C2C 发送消息请求（双轨制优化版：clientMsgId=bytes，msgId=0，chatId不传）
       C2CSendReq c2cSendReq = C2CSendReq(
-        clientMsgId: clientMsgId,  // 客户端消息ID（UUID）
-        msgId: '',  // 服务端消息ID（留空，由服务端生成）
-        from: message.fromUserId,
-        to: message.toUserId,
+        clientMsgId: ProtoConverterUtil.uuidStringToBytes(clientMsgId),  // UUID String -> bytes
+        msgId: Int64.ZERO,  // 服务端消息ID（0表示留空，由服务端生成）
+        from: ProtoConverterUtil.snowflakeStringToInt64(message.fromUserId),  // String -> fixed64
+        to: ProtoConverterUtil.snowflakeStringToInt64(message.toUserId),  // String -> fixed64
         format: message.type,
         content: message.content,
-        time: Int64(message.timestamp.millisecondsSinceEpoch),
-        chatId: message.chatId,
+        time: Int64(message.timestamp.millisecondsSinceEpoch),  // fixed64
+        // chatId 已从proto删除，服务端会根据from+to动态生成
       );
 
       // 包装为 ImProtoRequest
@@ -475,7 +534,7 @@ class WebSocketService extends GetxService {
       // 发送 Protobuf 二进制消息
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel!.sink.add(bytes);
-      info("📤 消息已发送到服务端（双轨制），客户端ID: $clientMsgId");
+      info("📤 消息已发送到服务端（双轨制优化版），客户端ID: $clientMsgId");
 
       // 触发消息状态变化事件（发送中）- 使用 clientMsgId 作为唯一标识
       AppEvent.onMessageStatusChanged.add(
@@ -541,19 +600,33 @@ class WebSocketService extends GetxService {
     AppEvent.onConversationUpdated.add(updatedConversation);
   }
 
-  // 发送接收确认（双轨制：传递两个ID）
-  void sendReceivedAck(String clientMsgId, String serverMsgId, String fromUserId, String toUserId, String chatId) {
+  /// ✅ 上下文感知ACK：根据会话打开状态智能发送ACK
+  /// 如果会话已打开 → 发送已读ACK（status=4）
+  /// 如果会话未打开 → 发送未读ACK（status=3）
+  void _sendSmartAck(String clientMsgId, String serverMsgId, String fromUserId, String toUserId) {
     try {
-      info("📥 发送接收确认（双轨制）...");
+      // 动态生成chatId（与服务端逻辑一致）
+      String messageChatId = ChatIdUtils.generateC2CChatId(fromUserId, toUserId);
+      
+      // 获取当前打开的会话ID
+      String currentOpenChatId = AppEvent.currentOpenChatId.value;
+      
+      // 智能决策：会话打开则已读，否则未读
+      bool isChatOpen = messageChatId == currentOpenChatId && currentOpenChatId.isNotEmpty;
+      int status = isChatOpen ? 4 : 3; // 4=已读, 3=未读
+      String statusDesc = isChatOpen ? "已读(会话打开)" : "未读(会话未打开)";
+      
+      info("🧠 [上下文感知ACK] 消息chatId: $messageChatId, 当前打开: $currentOpenChatId");
+      info("   → 决策: 发送 $statusDesc ACK");
 
-      // 构建 ACK 请求（双轨制：包含两个ID）
+      // 构建 ACK 请求（双轨制优化版：clientMsgId=bytes, msgId/from/to=fixed64, chatId已删除）
       C2CAckReq ackReq = C2CAckReq(
-        clientMsgId: clientMsgId, // 客户端消息ID
-        msgId: serverMsgId, // 服务端消息ID
-        from: toUserId, // 注意：发送方和接收方对调
-        to: fromUserId,
-        status: 3, // 3:未读
-        chatId: chatId,
+        clientMsgId: ProtoConverterUtil.uuidStringToBytes(clientMsgId), // String -> bytes
+        msgId: ProtoConverterUtil.snowflakeStringToInt64(serverMsgId), // String -> fixed64
+        from: ProtoConverterUtil.snowflakeStringToInt64(toUserId), // 注意：发送方和接收方对调, String -> fixed64
+        to: ProtoConverterUtil.snowflakeStringToInt64(fromUserId), // String -> fixed64
+        status: status, // 智能决策的状态
+        // chatId 已从proto删除，服务端会动态生成
       );
 
       // 包装为 ImProtoRequest
@@ -565,25 +638,25 @@ class WebSocketService extends GetxService {
       // 发送
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel?.sink.add(bytes);
-      info("✓ 发送接收确认完成 - status: 未读, 客户端ID: $clientMsgId, 服务端ID: $serverMsgId");
+      info("✓ [上下文感知ACK] 发送完成 - status: $statusDesc, clientMsgId: $clientMsgId, serverMsgId: $serverMsgId");
     } catch (e, stackTrace) {
-      error("❌ 发送接收确认失败: $e\n$stackTrace");
+      error("❌ 发送智能ACK失败: $e\n$stackTrace");
     }
   }
 
-  // 发送已读确认（双轨制：传递两个ID）
-  void sendReadAck(String clientMsgId, String serverMsgId, String fromUserId, String toUserId, String chatId) {
+  // 发送已读确认（双轨制：传递两个ID）（优化后：适配bytes/fixed64，chatId不传）
+  void sendReadAck(String clientMsgId, String serverMsgId, String fromUserId, String toUserId) {
     try {
-      info("👁️ 发送已读确认（双轨制）...");
+      info("👁️ 发送已读确认（双轨制优化版）...");
 
-      // 构建 ACK 请求（双轨制：包含两个ID）
+      // 构建 ACK 请求（双轨制优化版：clientMsgId=bytes, msgId/from/to=fixed64, chatId已删除）
       C2CAckReq ackReq = C2CAckReq(
-        clientMsgId: clientMsgId, // 客户端消息ID
-        msgId: serverMsgId, // 服务端消息ID
-        from: toUserId, // 注意：发送方和接收方对调
-        to: fromUserId,
+        clientMsgId: ProtoConverterUtil.uuidStringToBytes(clientMsgId), // String -> bytes
+        msgId: ProtoConverterUtil.snowflakeStringToInt64(serverMsgId), // String -> fixed64
+        from: ProtoConverterUtil.snowflakeStringToInt64(toUserId), // 注意：发送方和接收方对调, String -> fixed64
+        to: ProtoConverterUtil.snowflakeStringToInt64(fromUserId), // String -> fixed64
         status: 4, // 4:已读
-        chatId: chatId,
+        // chatId 已从proto删除，服务端会动态生成
       );
 
       // 包装为 ImProtoRequest
@@ -595,7 +668,7 @@ class WebSocketService extends GetxService {
       // 发送
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel?.sink.add(bytes);
-      info("✓ 发送已读确认完成 - status: 已读, 客户端ID: $clientMsgId, 服务端ID: $serverMsgId");
+      info("✓ 发送已读确认完成(优化版) - status: 已读, 客户端ID: $clientMsgId, 服务端ID: $serverMsgId");
       info("👁️ 设置消息状态为: ${MessageStatus.readed.desc}");
 
       // 使用 clientMsgId 更新消息状态
@@ -607,17 +680,17 @@ class WebSocketService extends GetxService {
     }
   }
 
-  // 撤回消息
-  void withdrawMessage(String msgId, String fromUserId, String toUserId, String chatId) {
+  // 撤回消息（优化后：适配fixed64，chatId不传）
+  void withdrawMessage(String msgId, String fromUserId, String toUserId) {
     try {
-      info("🗑️ 撤回消息...");
+      info("🗑️ 撤回消息(优化版)...");
 
-      // 构建撤回请求
+      // 构建撤回请求（优化版：msgId/from/to=fixed64, chatId已删除）
       C2CWithdrawReq withdrawReq = C2CWithdrawReq(
-        msgId: msgId,
-        from: fromUserId,
-        to: toUserId,
-        chatId: chatId,
+        msgId: ProtoConverterUtil.snowflakeStringToInt64(msgId), // String -> fixed64
+        from: ProtoConverterUtil.snowflakeStringToInt64(fromUserId), // String -> fixed64
+        to: ProtoConverterUtil.snowflakeStringToInt64(toUserId), // String -> fixed64
+        // chatId 已从proto删除，服务端会动态生成
       );
 
       // 包装为 ImProtoRequest
@@ -629,7 +702,7 @@ class WebSocketService extends GetxService {
       // 发送
       Uint8List bytes = protoRequest.writeToBuffer();
       _channel?.sink.add(bytes);
-      info("✓ 撤回消息完成: msgId=$msgId");
+      info("✓ 撤回消息完成(优化版): msgId=$msgId");
     } catch (e, stackTrace) {
       error("❌ 撤回消息失败: $e\n$stackTrace");
     }
@@ -647,7 +720,7 @@ class WebSocketService extends GetxService {
     info("📊 WebSocket连接状态: ${_channel != null ? '已连接' : '未连接'}");
     info("📊 当前用户ID: $_currentUserId");
     info("📊 WebSocket状态: ${AppEvent.webSocketStatus.value}");
-    info("💓 心跳状态: ${_isWaitingForPong ? '等待Pong' : '正常'}");
+    info("💓 心跳状态: 协议层自动处理（无需应用层检测）");
     info("=====================================");
   }
 
@@ -677,65 +750,41 @@ class WebSocketService extends GetxService {
   void _stopHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
-    
-    _heartbeatTimeoutTimer?.cancel();
-    _heartbeatTimeoutTimer = null;
-    
-    _isWaitingForPong = false;
-    info("💓 心跳机制已停止");
+    info("💓 心跳检查已停止");
   }
   
-  /// 发送心跳ping
+  /// 发送心跳ping（优化版：移除应用层心跳，依赖WebSocket协议层）
   void _sendHeartbeat() {
-    if (_isWaitingForPong) {
-      waring("⚠️ 上一个心跳还未收到响应，可能连接有问题");
-      _handleHeartbeatTimeout();
-      return;
-    }
+    // ✅ 优化说明：
+    // 1. WebSocketChannel 会自动处理协议层的 ping/pong 帧
+    // 2. 服务端也会主动发送 PingWebSocketFrame
+    // 3. 不需要应用层发送文本消息 "ping"（会导致服务端断开连接）
+    // 4. 此方法现在仅用于连接健康检查
     
     try {
       _lastHeartbeatTime = DateTime.now();
-      _isWaitingForPong = true;
       
-      info("💓 [${_formatTime(_lastHeartbeatTime!)}] 发送心跳 Ping");
+      // ✅ 只做连接状态检查，不发送任何消息
+      if (_channel == null || AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
+        waring("⚠️ WebSocket连接异常，触发重连");
+        _handleHeartbeatTimeout();
+        return;
+      }
       
-      // 发送ping消息，保持与服务端IdleStateHandler(30秒)的兼容性
-      _channel?.sink.add("ping");
+      info("💓 [${_formatTime(_lastHeartbeatTime!)}] 心跳检查正常（依赖协议层 ping/pong）");
       
-      // 启动心跳超时定时器
-      _heartbeatTimeoutTimer = Timer(_heartbeatTimeout, () {
-        if (_isWaitingForPong) {
-          waring("💔 心跳超时，未收到Pong响应");
-          _handleHeartbeatTimeout();
-        }
-      });
+      // ✅ 不需要超时检测，WebSocket 底层会处理
+      // 如果连接真的断开，_onDone 或 _onError 会被触发
       
     } catch (e) {
-      error("❌ 发送心跳失败: $e");
+      error("❌ 心跳检查失败: $e");
       _handleHeartbeatTimeout();
     }
   }
   
-  /// 处理心跳响应
-  void _handleHeartbeatResponse() {
-    if (_isWaitingForPong) {
-      _isWaitingForPong = false;
-      _heartbeatTimeoutTimer?.cancel();
-      _heartbeatTimeoutTimer = null;
-      
-      final now = DateTime.now();
-      final latency = _lastHeartbeatTime != null 
-          ? now.difference(_lastHeartbeatTime!).inMilliseconds
-          : 0;
-      
-      info("💚 [${_formatTime(now)}] 收到心跳响应 Pong (延迟: ${latency}ms)");
-    }
-  }
-  
-  /// 处理心跳超时
+  /// 处理心跳超时（连接异常检测）
   void _handleHeartbeatTimeout() {
-    waring("💔 心跳超时，准备重连");
-    _isWaitingForPong = false;
+    waring("💔 连接健康检查失败，准备重连");
     
     // 停止心跳
     _stopHeartbeat();

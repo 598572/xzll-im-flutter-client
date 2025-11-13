@@ -47,4 +47,9 @@ sealed class AppEvent {
   /// [List<String>] 收到的消息ID列表
   /// 通过订阅[onMsgIdsReceived]来监听收到的消息ID列表
   static PublishSubject<List<String>> onMsgIdsReceived = PublishSubject<List<String>>();
+
+  /// 当前打开的会话ID（用于上下文感知的ACK）
+  /// [String] 当前打开的会话ID，空字符串表示没有打开的会话
+  /// 通过设置[currentOpenChatId]来通知当前会话状态
+  static BehaviorSubject<String> currentOpenChatId = BehaviorSubject<String>.seeded('');
 }

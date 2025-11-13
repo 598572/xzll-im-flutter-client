@@ -10,6 +10,7 @@
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
 // ignore_for_file: non_constant_identifier_names
 
+import 'dart:async' as $async;
 import 'dart:core' as $core;
 
 import 'package:fixnum/fixnum.dart' as $fixnum;
@@ -20,6 +21,97 @@ import 'im_message.pbenum.dart';
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'im_message.pbenum.dart';
+
+/// Web基础响应
+class WebBaseResponse extends $pb.GeneratedMessage {
+  factory WebBaseResponse({
+    $core.int? code,
+    $core.String? message,
+    $core.String? data,
+    $core.bool? success,
+  }) {
+    final result = create();
+    if (code != null) result.code = code;
+    if (message != null) result.message = message;
+    if (data != null) result.data = data;
+    if (success != null) result.success = success;
+    return result;
+  }
+
+  WebBaseResponse._();
+
+  factory WebBaseResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory WebBaseResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'WebBaseResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'code')
+    ..aOS(2, _omitFieldNames ? '' : 'message')
+    ..aOS(3, _omitFieldNames ? '' : 'data')
+    ..aOB(4, _omitFieldNames ? '' : 'success')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WebBaseResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WebBaseResponse copyWith(void Function(WebBaseResponse) updates) =>
+      super.copyWith((message) => updates(message as WebBaseResponse))
+          as WebBaseResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static WebBaseResponse create() => WebBaseResponse._();
+  @$core.override
+  WebBaseResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static WebBaseResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<WebBaseResponse>(create);
+  static WebBaseResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get code => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set code($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCode() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get message => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set message($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMessage() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMessage() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get data => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set data($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasData() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearData() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get success => $_getBF(3);
+  @$pb.TagNumber(4)
+  set success($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSuccess() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSuccess() => $_clearField(4);
+}
 
 /// 基础消息包装（客户端->服务端）
 class ImProtoRequest extends $pb.GeneratedMessage {
@@ -44,7 +136,7 @@ class ImProtoRequest extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ImProtoRequest',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
     ..aE<MsgType>(1, _omitFieldNames ? '' : 'type', enumValues: MsgType.values)
     ..a<$core.List<$core.int>>(
@@ -65,8 +157,6 @@ class ImProtoRequest extends $pb.GeneratedMessage {
   static ImProtoRequest create() => ImProtoRequest._();
   @$core.override
   ImProtoRequest createEmptyInstance() => create();
-  static $pb.PbList<ImProtoRequest> createRepeated() =>
-      $pb.PbList<ImProtoRequest>();
   @$core.pragma('dart2js:noInline')
   static ImProtoRequest getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<ImProtoRequest>(create);
@@ -118,7 +208,7 @@ class ImProtoResponse extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ImProtoResponse',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
     ..aE<MsgType>(1, _omitFieldNames ? '' : 'type', enumValues: MsgType.values)
     ..a<$core.List<$core.int>>(
@@ -141,8 +231,6 @@ class ImProtoResponse extends $pb.GeneratedMessage {
   static ImProtoResponse create() => ImProtoResponse._();
   @$core.override
   ImProtoResponse createEmptyInstance() => create();
-  static $pb.PbList<ImProtoResponse> createRepeated() =>
-      $pb.PbList<ImProtoResponse>();
   @$core.pragma('dart2js:noInline')
   static ImProtoResponse getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<ImProtoResponse>(create);
@@ -185,17 +273,16 @@ class ImProtoResponse extends $pb.GeneratedMessage {
   void clearMsg() => $_clearField(4);
 }
 
-/// C2C发送消息请求 - 上行
+/// C2C发送消息请求 - 上行（优化版：方案1增强 + fixed64）
 class C2CSendReq extends $pb.GeneratedMessage {
   factory C2CSendReq({
-    $core.String? clientMsgId,
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? to,
+    $core.List<$core.int>? clientMsgId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? to,
     $core.int? format,
     $core.String? content,
     $fixnum.Int64? time,
-    $core.String? chatId,
   }) {
     final result = create();
     if (clientMsgId != null) result.clientMsgId = clientMsgId;
@@ -205,7 +292,6 @@ class C2CSendReq extends $pb.GeneratedMessage {
     if (format != null) result.format = format;
     if (content != null) result.content = content;
     if (time != null) result.time = time;
-    if (chatId != null) result.chatId = chatId;
     return result;
   }
 
@@ -220,16 +306,21 @@ class C2CSendReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'C2CSendReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'clientMsgId', protoName: 'clientMsgId')
-    ..aOS(2, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(3, _omitFieldNames ? '' : 'from')
-    ..aOS(4, _omitFieldNames ? '' : 'to')
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'clientMsgId', $pb.PbFieldType.OY,
+        protoName: 'clientMsgId')
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'to', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(5, _omitFieldNames ? '' : 'format')
     ..aOS(6, _omitFieldNames ? '' : 'content')
-    ..aInt64(7, _omitFieldNames ? '' : 'time')
-    ..aOS(8, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
+    ..a<$fixnum.Int64>(7, _omitFieldNames ? '' : 'time', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -245,43 +336,42 @@ class C2CSendReq extends $pb.GeneratedMessage {
   static C2CSendReq create() => C2CSendReq._();
   @$core.override
   C2CSendReq createEmptyInstance() => create();
-  static $pb.PbList<C2CSendReq> createRepeated() => $pb.PbList<C2CSendReq>();
   @$core.pragma('dart2js:noInline')
   static C2CSendReq getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<C2CSendReq>(create);
   static C2CSendReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get clientMsgId => $_getSZ(0);
+  $core.List<$core.int> get clientMsgId => $_getN(0);
   @$pb.TagNumber(1)
-  set clientMsgId($core.String value) => $_setString(0, value);
+  set clientMsgId($core.List<$core.int> value) => $_setBytes(0, value);
   @$pb.TagNumber(1)
   $core.bool hasClientMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearClientMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get msgId => $_getSZ(1);
+  $fixnum.Int64 get msgId => $_getI64(1);
   @$pb.TagNumber(2)
-  set msgId($core.String value) => $_setString(1, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasMsgId() => $_has(1);
   @$pb.TagNumber(2)
   void clearMsgId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get from => $_getSZ(2);
+  $fixnum.Int64 get from => $_getI64(2);
   @$pb.TagNumber(3)
-  set from($core.String value) => $_setString(2, value);
+  set from($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasFrom() => $_has(2);
   @$pb.TagNumber(3)
   void clearFrom() => $_clearField(3);
 
   @$pb.TagNumber(4)
-  $core.String get to => $_getSZ(3);
+  $fixnum.Int64 get to => $_getI64(3);
   @$pb.TagNumber(4)
-  set to($core.String value) => $_setString(3, value);
+  set to($fixnum.Int64 value) => $_setInt64(3, value);
   @$pb.TagNumber(4)
   $core.bool hasTo() => $_has(3);
   @$pb.TagNumber(4)
@@ -313,26 +403,16 @@ class C2CSendReq extends $pb.GeneratedMessage {
   $core.bool hasTime() => $_has(6);
   @$pb.TagNumber(7)
   void clearTime() => $_clearField(7);
-
-  @$pb.TagNumber(8)
-  $core.String get chatId => $_getSZ(7);
-  @$pb.TagNumber(8)
-  set chatId($core.String value) => $_setString(7, value);
-  @$pb.TagNumber(8)
-  $core.bool hasChatId() => $_has(7);
-  @$pb.TagNumber(8)
-  void clearChatId() => $_clearField(8);
 }
 
-/// C2C消息确认请求 - 上行
+/// C2C消息确认请求 - 上行（优化版）
 class C2CAckReq extends $pb.GeneratedMessage {
   factory C2CAckReq({
-    $core.String? clientMsgId,
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? to,
+    $core.List<$core.int>? clientMsgId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? to,
     $core.int? status,
-    $core.String? chatId,
   }) {
     final result = create();
     if (clientMsgId != null) result.clientMsgId = clientMsgId;
@@ -340,7 +420,6 @@ class C2CAckReq extends $pb.GeneratedMessage {
     if (from != null) result.from = from;
     if (to != null) result.to = to;
     if (status != null) result.status = status;
-    if (chatId != null) result.chatId = chatId;
     return result;
   }
 
@@ -355,14 +434,18 @@ class C2CAckReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'C2CAckReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'clientMsgId', protoName: 'clientMsgId')
-    ..aOS(2, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(3, _omitFieldNames ? '' : 'from')
-    ..aOS(4, _omitFieldNames ? '' : 'to')
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'clientMsgId', $pb.PbFieldType.OY,
+        protoName: 'clientMsgId')
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'to', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(5, _omitFieldNames ? '' : 'status')
-    ..aOS(6, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -378,43 +461,42 @@ class C2CAckReq extends $pb.GeneratedMessage {
   static C2CAckReq create() => C2CAckReq._();
   @$core.override
   C2CAckReq createEmptyInstance() => create();
-  static $pb.PbList<C2CAckReq> createRepeated() => $pb.PbList<C2CAckReq>();
   @$core.pragma('dart2js:noInline')
   static C2CAckReq getDefault() =>
       _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<C2CAckReq>(create);
   static C2CAckReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get clientMsgId => $_getSZ(0);
+  $core.List<$core.int> get clientMsgId => $_getN(0);
   @$pb.TagNumber(1)
-  set clientMsgId($core.String value) => $_setString(0, value);
+  set clientMsgId($core.List<$core.int> value) => $_setBytes(0, value);
   @$pb.TagNumber(1)
   $core.bool hasClientMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearClientMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get msgId => $_getSZ(1);
+  $fixnum.Int64 get msgId => $_getI64(1);
   @$pb.TagNumber(2)
-  set msgId($core.String value) => $_setString(1, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasMsgId() => $_has(1);
   @$pb.TagNumber(2)
   void clearMsgId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get from => $_getSZ(2);
+  $fixnum.Int64 get from => $_getI64(2);
   @$pb.TagNumber(3)
-  set from($core.String value) => $_setString(2, value);
+  set from($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasFrom() => $_has(2);
   @$pb.TagNumber(3)
   void clearFrom() => $_clearField(3);
 
   @$pb.TagNumber(4)
-  $core.String get to => $_getSZ(3);
+  $fixnum.Int64 get to => $_getI64(3);
   @$pb.TagNumber(4)
-  set to($core.String value) => $_setString(3, value);
+  set to($fixnum.Int64 value) => $_setInt64(3, value);
   @$pb.TagNumber(4)
   $core.bool hasTo() => $_has(3);
   @$pb.TagNumber(4)
@@ -428,30 +510,19 @@ class C2CAckReq extends $pb.GeneratedMessage {
   $core.bool hasStatus() => $_has(4);
   @$pb.TagNumber(5)
   void clearStatus() => $_clearField(5);
-
-  @$pb.TagNumber(6)
-  $core.String get chatId => $_getSZ(5);
-  @$pb.TagNumber(6)
-  set chatId($core.String value) => $_setString(5, value);
-  @$pb.TagNumber(6)
-  $core.bool hasChatId() => $_has(5);
-  @$pb.TagNumber(6)
-  void clearChatId() => $_clearField(6);
 }
 
-/// C2C撤回消息请求 - 上行
+/// C2C撤回消息请求 - 上行（优化版）
 class C2CWithdrawReq extends $pb.GeneratedMessage {
   factory C2CWithdrawReq({
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? to,
-    $core.String? chatId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? to,
   }) {
     final result = create();
     if (msgId != null) result.msgId = msgId;
     if (from != null) result.from = from;
     if (to != null) result.to = to;
-    if (chatId != null) result.chatId = chatId;
     return result;
   }
 
@@ -466,12 +537,14 @@ class C2CWithdrawReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'C2CWithdrawReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(2, _omitFieldNames ? '' : 'from')
-    ..aOS(3, _omitFieldNames ? '' : 'to')
-    ..aOS(4, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'to', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -488,54 +561,43 @@ class C2CWithdrawReq extends $pb.GeneratedMessage {
   static C2CWithdrawReq create() => C2CWithdrawReq._();
   @$core.override
   C2CWithdrawReq createEmptyInstance() => create();
-  static $pb.PbList<C2CWithdrawReq> createRepeated() =>
-      $pb.PbList<C2CWithdrawReq>();
   @$core.pragma('dart2js:noInline')
   static C2CWithdrawReq getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<C2CWithdrawReq>(create);
   static C2CWithdrawReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get msgId => $_getSZ(0);
+  $fixnum.Int64 get msgId => $_getI64(0);
   @$pb.TagNumber(1)
-  set msgId($core.String value) => $_setString(0, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get from => $_getSZ(1);
+  $fixnum.Int64 get from => $_getI64(1);
   @$pb.TagNumber(2)
-  set from($core.String value) => $_setString(1, value);
+  set from($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasFrom() => $_has(1);
   @$pb.TagNumber(2)
   void clearFrom() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get to => $_getSZ(2);
+  $fixnum.Int64 get to => $_getI64(2);
   @$pb.TagNumber(3)
-  set to($core.String value) => $_setString(2, value);
+  set to($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasTo() => $_has(2);
   @$pb.TagNumber(3)
   void clearTo() => $_clearField(3);
-
-  @$pb.TagNumber(4)
-  $core.String get chatId => $_getSZ(3);
-  @$pb.TagNumber(4)
-  set chatId($core.String value) => $_setString(3, value);
-  @$pb.TagNumber(4)
-  $core.bool hasChatId() => $_has(3);
-  @$pb.TagNumber(4)
-  void clearChatId() => $_clearField(4);
 }
 
-/// 批量获取消息ID请求 - 上行
+/// 批量获取消息ID请求 - 上行（优化版）
 class GetBatchMsgIdsReq extends $pb.GeneratedMessage {
   factory GetBatchMsgIdsReq({
-    $core.String? userId,
+    $fixnum.Int64? userId,
   }) {
     final result = create();
     if (userId != null) result.userId = userId;
@@ -553,9 +615,10 @@ class GetBatchMsgIdsReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'GetBatchMsgIdsReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'userId', protoName: 'userId')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'userId', $pb.PbFieldType.OF6,
+        protoName: 'userId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -572,34 +635,31 @@ class GetBatchMsgIdsReq extends $pb.GeneratedMessage {
   static GetBatchMsgIdsReq create() => GetBatchMsgIdsReq._();
   @$core.override
   GetBatchMsgIdsReq createEmptyInstance() => create();
-  static $pb.PbList<GetBatchMsgIdsReq> createRepeated() =>
-      $pb.PbList<GetBatchMsgIdsReq>();
   @$core.pragma('dart2js:noInline')
   static GetBatchMsgIdsReq getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GetBatchMsgIdsReq>(create);
   static GetBatchMsgIdsReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get userId => $_getSZ(0);
+  $fixnum.Int64 get userId => $_getI64(0);
   @$pb.TagNumber(1)
-  set userId($core.String value) => $_setString(0, value);
+  set userId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasUserId() => $_has(0);
   @$pb.TagNumber(1)
   void clearUserId() => $_clearField(1);
 }
 
-/// 服务端推送C2C消息 - 下行
+/// 服务端推送C2C消息 - 下行（优化版）
 class C2CMsgPush extends $pb.GeneratedMessage {
   factory C2CMsgPush({
-    $core.String? clientMsgId,
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? to,
+    $core.List<$core.int>? clientMsgId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? to,
     $core.int? format,
     $core.String? content,
     $fixnum.Int64? time,
-    $core.String? chatId,
   }) {
     final result = create();
     if (clientMsgId != null) result.clientMsgId = clientMsgId;
@@ -609,7 +669,6 @@ class C2CMsgPush extends $pb.GeneratedMessage {
     if (format != null) result.format = format;
     if (content != null) result.content = content;
     if (time != null) result.time = time;
-    if (chatId != null) result.chatId = chatId;
     return result;
   }
 
@@ -624,16 +683,21 @@ class C2CMsgPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'C2CMsgPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'clientMsgId', protoName: 'clientMsgId')
-    ..aOS(2, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(3, _omitFieldNames ? '' : 'from')
-    ..aOS(4, _omitFieldNames ? '' : 'to')
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'clientMsgId', $pb.PbFieldType.OY,
+        protoName: 'clientMsgId')
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'to', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(5, _omitFieldNames ? '' : 'format')
     ..aOS(6, _omitFieldNames ? '' : 'content')
-    ..aInt64(7, _omitFieldNames ? '' : 'time')
-    ..aOS(8, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
+    ..a<$fixnum.Int64>(7, _omitFieldNames ? '' : 'time', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -649,43 +713,42 @@ class C2CMsgPush extends $pb.GeneratedMessage {
   static C2CMsgPush create() => C2CMsgPush._();
   @$core.override
   C2CMsgPush createEmptyInstance() => create();
-  static $pb.PbList<C2CMsgPush> createRepeated() => $pb.PbList<C2CMsgPush>();
   @$core.pragma('dart2js:noInline')
   static C2CMsgPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<C2CMsgPush>(create);
   static C2CMsgPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get clientMsgId => $_getSZ(0);
+  $core.List<$core.int> get clientMsgId => $_getN(0);
   @$pb.TagNumber(1)
-  set clientMsgId($core.String value) => $_setString(0, value);
+  set clientMsgId($core.List<$core.int> value) => $_setBytes(0, value);
   @$pb.TagNumber(1)
   $core.bool hasClientMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearClientMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get msgId => $_getSZ(1);
+  $fixnum.Int64 get msgId => $_getI64(1);
   @$pb.TagNumber(2)
-  set msgId($core.String value) => $_setString(1, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasMsgId() => $_has(1);
   @$pb.TagNumber(2)
   void clearMsgId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get from => $_getSZ(2);
+  $fixnum.Int64 get from => $_getI64(2);
   @$pb.TagNumber(3)
-  set from($core.String value) => $_setString(2, value);
+  set from($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasFrom() => $_has(2);
   @$pb.TagNumber(3)
   void clearFrom() => $_clearField(3);
 
   @$pb.TagNumber(4)
-  $core.String get to => $_getSZ(3);
+  $fixnum.Int64 get to => $_getI64(3);
   @$pb.TagNumber(4)
-  set to($core.String value) => $_setString(3, value);
+  set to($fixnum.Int64 value) => $_setInt64(3, value);
   @$pb.TagNumber(4)
   $core.bool hasTo() => $_has(3);
   @$pb.TagNumber(4)
@@ -717,21 +780,12 @@ class C2CMsgPush extends $pb.GeneratedMessage {
   $core.bool hasTime() => $_has(6);
   @$pb.TagNumber(7)
   void clearTime() => $_clearField(7);
-
-  @$pb.TagNumber(8)
-  $core.String get chatId => $_getSZ(7);
-  @$pb.TagNumber(8)
-  set chatId($core.String value) => $_setString(7, value);
-  @$pb.TagNumber(8)
-  $core.bool hasChatId() => $_has(7);
-  @$pb.TagNumber(8)
-  void clearChatId() => $_clearField(8);
 }
 
-/// 批量消息ID推送 - 下行
+/// 批量消息ID推送 - 下行（优化版）
 class BatchMsgIdsPush extends $pb.GeneratedMessage {
   factory BatchMsgIdsPush({
-    $core.Iterable<$core.String>? msgIds,
+    $core.Iterable<$fixnum.Int64>? msgIds,
   }) {
     final result = create();
     if (msgIds != null) result.msgIds.addAll(msgIds);
@@ -749,9 +803,10 @@ class BatchMsgIdsPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'BatchMsgIdsPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..pPS(1, _omitFieldNames ? '' : 'msgIds', protoName: 'msgIds')
+    ..p<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgIds', $pb.PbFieldType.KF6,
+        protoName: 'msgIds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -768,35 +823,29 @@ class BatchMsgIdsPush extends $pb.GeneratedMessage {
   static BatchMsgIdsPush create() => BatchMsgIdsPush._();
   @$core.override
   BatchMsgIdsPush createEmptyInstance() => create();
-  static $pb.PbList<BatchMsgIdsPush> createRepeated() =>
-      $pb.PbList<BatchMsgIdsPush>();
   @$core.pragma('dart2js:noInline')
   static BatchMsgIdsPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<BatchMsgIdsPush>(create);
   static BatchMsgIdsPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $pb.PbList<$core.String> get msgIds => $_getList(0);
+  $pb.PbList<$fixnum.Int64> get msgIds => $_getList(0);
 }
 
-/// 服务端ACK推送 - 下行（gRPC专用）
+/// 服务端ACK推送 - 下行（gRPC专用，优化版）
 class ServerAckPush extends $pb.GeneratedMessage {
   factory ServerAckPush({
-    $core.String? toUserId,
-    $core.String? clientMsgId,
-    $core.String? msgId,
-    $core.String? chatId,
+    $fixnum.Int64? toUserId,
+    $core.List<$core.int>? clientMsgId,
+    $fixnum.Int64? msgId,
     $core.int? msgReceivedStatus,
-    $core.String? ackTextDesc,
     $fixnum.Int64? receiveTime,
   }) {
     final result = create();
     if (toUserId != null) result.toUserId = toUserId;
     if (clientMsgId != null) result.clientMsgId = clientMsgId;
     if (msgId != null) result.msgId = msgId;
-    if (chatId != null) result.chatId = chatId;
     if (msgReceivedStatus != null) result.msgReceivedStatus = msgReceivedStatus;
-    if (ackTextDesc != null) result.ackTextDesc = ackTextDesc;
     if (receiveTime != null) result.receiveTime = receiveTime;
     return result;
   }
@@ -812,16 +861,21 @@ class ServerAckPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ServerAckPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'toUserId', protoName: 'toUserId')
-    ..aOS(2, _omitFieldNames ? '' : 'clientMsgId', protoName: 'clientMsgId')
-    ..aOS(3, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(4, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'toUserId', $pb.PbFieldType.OF6,
+        protoName: 'toUserId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'clientMsgId', $pb.PbFieldType.OY,
+        protoName: 'clientMsgId')
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(5, _omitFieldNames ? '' : 'msgReceivedStatus',
         protoName: 'msgReceivedStatus')
-    ..aOS(6, _omitFieldNames ? '' : 'ackTextDesc', protoName: 'ackTextDesc')
-    ..aInt64(7, _omitFieldNames ? '' : 'receiveTime', protoName: 'receiveTime')
+    ..a<$fixnum.Int64>(
+        7, _omitFieldNames ? '' : 'receiveTime', $pb.PbFieldType.OF6,
+        protoName: 'receiveTime', defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -838,95 +892,73 @@ class ServerAckPush extends $pb.GeneratedMessage {
   static ServerAckPush create() => ServerAckPush._();
   @$core.override
   ServerAckPush createEmptyInstance() => create();
-  static $pb.PbList<ServerAckPush> createRepeated() =>
-      $pb.PbList<ServerAckPush>();
   @$core.pragma('dart2js:noInline')
   static ServerAckPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<ServerAckPush>(create);
   static ServerAckPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get toUserId => $_getSZ(0);
+  $fixnum.Int64 get toUserId => $_getI64(0);
   @$pb.TagNumber(1)
-  set toUserId($core.String value) => $_setString(0, value);
+  set toUserId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasToUserId() => $_has(0);
   @$pb.TagNumber(1)
   void clearToUserId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get clientMsgId => $_getSZ(1);
+  $core.List<$core.int> get clientMsgId => $_getN(1);
   @$pb.TagNumber(2)
-  set clientMsgId($core.String value) => $_setString(1, value);
+  set clientMsgId($core.List<$core.int> value) => $_setBytes(1, value);
   @$pb.TagNumber(2)
   $core.bool hasClientMsgId() => $_has(1);
   @$pb.TagNumber(2)
   void clearClientMsgId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get msgId => $_getSZ(2);
+  $fixnum.Int64 get msgId => $_getI64(2);
   @$pb.TagNumber(3)
-  set msgId($core.String value) => $_setString(2, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasMsgId() => $_has(2);
   @$pb.TagNumber(3)
   void clearMsgId() => $_clearField(3);
 
-  @$pb.TagNumber(4)
-  $core.String get chatId => $_getSZ(3);
-  @$pb.TagNumber(4)
-  set chatId($core.String value) => $_setString(3, value);
-  @$pb.TagNumber(4)
-  $core.bool hasChatId() => $_has(3);
-  @$pb.TagNumber(4)
-  void clearChatId() => $_clearField(4);
-
+  /// chatId 已删除（可根据消息上下文或from+to拼接）
   @$pb.TagNumber(5)
-  $core.int get msgReceivedStatus => $_getIZ(4);
+  $core.int get msgReceivedStatus => $_getIZ(3);
   @$pb.TagNumber(5)
-  set msgReceivedStatus($core.int value) => $_setSignedInt32(4, value);
+  set msgReceivedStatus($core.int value) => $_setSignedInt32(3, value);
   @$pb.TagNumber(5)
-  $core.bool hasMsgReceivedStatus() => $_has(4);
+  $core.bool hasMsgReceivedStatus() => $_has(3);
   @$pb.TagNumber(5)
   void clearMsgReceivedStatus() => $_clearField(5);
 
-  @$pb.TagNumber(6)
-  $core.String get ackTextDesc => $_getSZ(5);
-  @$pb.TagNumber(6)
-  set ackTextDesc($core.String value) => $_setString(5, value);
-  @$pb.TagNumber(6)
-  $core.bool hasAckTextDesc() => $_has(5);
-  @$pb.TagNumber(6)
-  void clearAckTextDesc() => $_clearField(6);
-
+  /// ackTextDesc 已删除（客户端本地化显示，节省 21+2=23 字节）
   @$pb.TagNumber(7)
-  $fixnum.Int64 get receiveTime => $_getI64(6);
+  $fixnum.Int64 get receiveTime => $_getI64(4);
   @$pb.TagNumber(7)
-  set receiveTime($fixnum.Int64 value) => $_setInt64(6, value);
+  set receiveTime($fixnum.Int64 value) => $_setInt64(4, value);
   @$pb.TagNumber(7)
-  $core.bool hasReceiveTime() => $_has(6);
+  $core.bool hasReceiveTime() => $_has(4);
   @$pb.TagNumber(7)
   void clearReceiveTime() => $_clearField(7);
 }
 
-/// 客户端ACK推送 - 下行（gRPC专用）
+/// 客户端ACK推送 - 下行（gRPC专用，优化版）
 class ClientAckPush extends $pb.GeneratedMessage {
   factory ClientAckPush({
-    $core.String? toUserId,
-    $core.String? clientMsgId,
-    $core.String? msgId,
-    $core.String? chatId,
+    $fixnum.Int64? toUserId,
+    $core.List<$core.int>? clientMsgId,
+    $fixnum.Int64? msgId,
     $core.int? msgReceivedStatus,
-    $core.String? ackTextDesc,
     $fixnum.Int64? receiveTime,
   }) {
     final result = create();
     if (toUserId != null) result.toUserId = toUserId;
     if (clientMsgId != null) result.clientMsgId = clientMsgId;
     if (msgId != null) result.msgId = msgId;
-    if (chatId != null) result.chatId = chatId;
     if (msgReceivedStatus != null) result.msgReceivedStatus = msgReceivedStatus;
-    if (ackTextDesc != null) result.ackTextDesc = ackTextDesc;
     if (receiveTime != null) result.receiveTime = receiveTime;
     return result;
   }
@@ -942,16 +974,21 @@ class ClientAckPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ClientAckPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'toUserId', protoName: 'toUserId')
-    ..aOS(2, _omitFieldNames ? '' : 'clientMsgId', protoName: 'clientMsgId')
-    ..aOS(3, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(4, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'toUserId', $pb.PbFieldType.OF6,
+        protoName: 'toUserId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'clientMsgId', $pb.PbFieldType.OY,
+        protoName: 'clientMsgId')
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(5, _omitFieldNames ? '' : 'msgReceivedStatus',
         protoName: 'msgReceivedStatus')
-    ..aOS(6, _omitFieldNames ? '' : 'ackTextDesc', protoName: 'ackTextDesc')
-    ..aInt64(7, _omitFieldNames ? '' : 'receiveTime', protoName: 'receiveTime')
+    ..a<$fixnum.Int64>(
+        7, _omitFieldNames ? '' : 'receiveTime', $pb.PbFieldType.OF6,
+        protoName: 'receiveTime', defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -968,89 +1005,69 @@ class ClientAckPush extends $pb.GeneratedMessage {
   static ClientAckPush create() => ClientAckPush._();
   @$core.override
   ClientAckPush createEmptyInstance() => create();
-  static $pb.PbList<ClientAckPush> createRepeated() =>
-      $pb.PbList<ClientAckPush>();
   @$core.pragma('dart2js:noInline')
   static ClientAckPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<ClientAckPush>(create);
   static ClientAckPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get toUserId => $_getSZ(0);
+  $fixnum.Int64 get toUserId => $_getI64(0);
   @$pb.TagNumber(1)
-  set toUserId($core.String value) => $_setString(0, value);
+  set toUserId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasToUserId() => $_has(0);
   @$pb.TagNumber(1)
   void clearToUserId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get clientMsgId => $_getSZ(1);
+  $core.List<$core.int> get clientMsgId => $_getN(1);
   @$pb.TagNumber(2)
-  set clientMsgId($core.String value) => $_setString(1, value);
+  set clientMsgId($core.List<$core.int> value) => $_setBytes(1, value);
   @$pb.TagNumber(2)
   $core.bool hasClientMsgId() => $_has(1);
   @$pb.TagNumber(2)
   void clearClientMsgId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get msgId => $_getSZ(2);
+  $fixnum.Int64 get msgId => $_getI64(2);
   @$pb.TagNumber(3)
-  set msgId($core.String value) => $_setString(2, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasMsgId() => $_has(2);
   @$pb.TagNumber(3)
   void clearMsgId() => $_clearField(3);
 
-  @$pb.TagNumber(4)
-  $core.String get chatId => $_getSZ(3);
-  @$pb.TagNumber(4)
-  set chatId($core.String value) => $_setString(3, value);
-  @$pb.TagNumber(4)
-  $core.bool hasChatId() => $_has(3);
-  @$pb.TagNumber(4)
-  void clearChatId() => $_clearField(4);
-
+  /// chatId 已删除
   @$pb.TagNumber(5)
-  $core.int get msgReceivedStatus => $_getIZ(4);
+  $core.int get msgReceivedStatus => $_getIZ(3);
   @$pb.TagNumber(5)
-  set msgReceivedStatus($core.int value) => $_setSignedInt32(4, value);
+  set msgReceivedStatus($core.int value) => $_setSignedInt32(3, value);
   @$pb.TagNumber(5)
-  $core.bool hasMsgReceivedStatus() => $_has(4);
+  $core.bool hasMsgReceivedStatus() => $_has(3);
   @$pb.TagNumber(5)
   void clearMsgReceivedStatus() => $_clearField(5);
 
-  @$pb.TagNumber(6)
-  $core.String get ackTextDesc => $_getSZ(5);
-  @$pb.TagNumber(6)
-  set ackTextDesc($core.String value) => $_setString(5, value);
-  @$pb.TagNumber(6)
-  $core.bool hasAckTextDesc() => $_has(5);
-  @$pb.TagNumber(6)
-  void clearAckTextDesc() => $_clearField(6);
-
+  /// ackTextDesc 已删除
   @$pb.TagNumber(7)
-  $fixnum.Int64 get receiveTime => $_getI64(6);
+  $fixnum.Int64 get receiveTime => $_getI64(4);
   @$pb.TagNumber(7)
-  set receiveTime($fixnum.Int64 value) => $_setInt64(6, value);
+  set receiveTime($fixnum.Int64 value) => $_setInt64(4, value);
   @$pb.TagNumber(7)
-  $core.bool hasReceiveTime() => $_has(6);
+  $core.bool hasReceiveTime() => $_has(4);
   @$pb.TagNumber(7)
   void clearReceiveTime() => $_clearField(7);
 }
 
-/// 撤回消息推送 - 下行（gRPC专用）
+/// 撤回消息推送 - 下行（gRPC专用，优化版）
 class WithdrawPush extends $pb.GeneratedMessage {
   factory WithdrawPush({
-    $core.String? toUserId,
-    $core.String? msgId,
-    $core.String? chatId,
-    $core.String? fromUserId,
+    $fixnum.Int64? toUserId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? fromUserId,
   }) {
     final result = create();
     if (toUserId != null) result.toUserId = toUserId;
     if (msgId != null) result.msgId = msgId;
-    if (chatId != null) result.chatId = chatId;
     if (fromUserId != null) result.fromUserId = fromUserId;
     return result;
   }
@@ -1066,12 +1083,16 @@ class WithdrawPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'WithdrawPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'toUserId', protoName: 'toUserId')
-    ..aOS(2, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(3, _omitFieldNames ? '' : 'chatId', protoName: 'chatId')
-    ..aOS(4, _omitFieldNames ? '' : 'fromUserId', protoName: 'fromUserId')
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'toUserId', $pb.PbFieldType.OF6,
+        protoName: 'toUserId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        4, _omitFieldNames ? '' : 'fromUserId', $pb.PbFieldType.OF6,
+        protoName: 'fromUserId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1088,56 +1109,46 @@ class WithdrawPush extends $pb.GeneratedMessage {
   static WithdrawPush create() => WithdrawPush._();
   @$core.override
   WithdrawPush createEmptyInstance() => create();
-  static $pb.PbList<WithdrawPush> createRepeated() =>
-      $pb.PbList<WithdrawPush>();
   @$core.pragma('dart2js:noInline')
   static WithdrawPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<WithdrawPush>(create);
   static WithdrawPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get toUserId => $_getSZ(0);
+  $fixnum.Int64 get toUserId => $_getI64(0);
   @$pb.TagNumber(1)
-  set toUserId($core.String value) => $_setString(0, value);
+  set toUserId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasToUserId() => $_has(0);
   @$pb.TagNumber(1)
   void clearToUserId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get msgId => $_getSZ(1);
+  $fixnum.Int64 get msgId => $_getI64(1);
   @$pb.TagNumber(2)
-  set msgId($core.String value) => $_setString(1, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasMsgId() => $_has(1);
   @$pb.TagNumber(2)
   void clearMsgId() => $_clearField(2);
 
-  @$pb.TagNumber(3)
-  $core.String get chatId => $_getSZ(2);
-  @$pb.TagNumber(3)
-  set chatId($core.String value) => $_setString(2, value);
-  @$pb.TagNumber(3)
-  $core.bool hasChatId() => $_has(2);
-  @$pb.TagNumber(3)
-  void clearChatId() => $_clearField(3);
-
+  /// chatId 已删除
   @$pb.TagNumber(4)
-  $core.String get fromUserId => $_getSZ(3);
+  $fixnum.Int64 get fromUserId => $_getI64(2);
   @$pb.TagNumber(4)
-  set fromUserId($core.String value) => $_setString(3, value);
+  set fromUserId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(4)
-  $core.bool hasFromUserId() => $_has(3);
+  $core.bool hasFromUserId() => $_has(2);
   @$pb.TagNumber(4)
   void clearFromUserId() => $_clearField(4);
 }
 
-/// 好友请求推送 - 下行（gRPC专用）
+/// 好友请求推送 - 下行（gRPC专用，优化版）
 class FriendRequestPush extends $pb.GeneratedMessage {
   factory FriendRequestPush({
-    $core.String? toUserId,
-    $core.String? requestId,
-    $core.String? fromUserId,
+    $fixnum.Int64? toUserId,
+    $fixnum.Int64? requestId,
+    $fixnum.Int64? fromUserId,
     $core.String? fromUserName,
     $core.String? fromUserAvatar,
     $core.String? requestMessage,
@@ -1171,18 +1182,26 @@ class FriendRequestPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FriendRequestPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'toUserId', protoName: 'toUserId')
-    ..aOS(2, _omitFieldNames ? '' : 'requestId', protoName: 'requestId')
-    ..aOS(3, _omitFieldNames ? '' : 'fromUserId', protoName: 'fromUserId')
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'toUserId', $pb.PbFieldType.OF6,
+        protoName: 'toUserId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'requestId', $pb.PbFieldType.OF6,
+        protoName: 'requestId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        3, _omitFieldNames ? '' : 'fromUserId', $pb.PbFieldType.OF6,
+        protoName: 'fromUserId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(4, _omitFieldNames ? '' : 'fromUserName', protoName: 'fromUserName')
     ..aOS(5, _omitFieldNames ? '' : 'fromUserAvatar',
         protoName: 'fromUserAvatar')
     ..aOS(6, _omitFieldNames ? '' : 'requestMessage',
         protoName: 'requestMessage')
     ..aI(7, _omitFieldNames ? '' : 'status')
-    ..aInt64(8, _omitFieldNames ? '' : 'createTime', protoName: 'createTime')
+    ..a<$fixnum.Int64>(
+        8, _omitFieldNames ? '' : 'createTime', $pb.PbFieldType.OF6,
+        protoName: 'createTime', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(9, _omitFieldNames ? '' : 'pushTitle', protoName: 'pushTitle')
     ..aOS(10, _omitFieldNames ? '' : 'pushContent', protoName: 'pushContent')
     ..hasRequiredFields = false;
@@ -1201,35 +1220,33 @@ class FriendRequestPush extends $pb.GeneratedMessage {
   static FriendRequestPush create() => FriendRequestPush._();
   @$core.override
   FriendRequestPush createEmptyInstance() => create();
-  static $pb.PbList<FriendRequestPush> createRepeated() =>
-      $pb.PbList<FriendRequestPush>();
   @$core.pragma('dart2js:noInline')
   static FriendRequestPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<FriendRequestPush>(create);
   static FriendRequestPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get toUserId => $_getSZ(0);
+  $fixnum.Int64 get toUserId => $_getI64(0);
   @$pb.TagNumber(1)
-  set toUserId($core.String value) => $_setString(0, value);
+  set toUserId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasToUserId() => $_has(0);
   @$pb.TagNumber(1)
   void clearToUserId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get requestId => $_getSZ(1);
+  $fixnum.Int64 get requestId => $_getI64(1);
   @$pb.TagNumber(2)
-  set requestId($core.String value) => $_setString(1, value);
+  set requestId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasRequestId() => $_has(1);
   @$pb.TagNumber(2)
   void clearRequestId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get fromUserId => $_getSZ(2);
+  $fixnum.Int64 get fromUserId => $_getI64(2);
   @$pb.TagNumber(3)
-  set fromUserId($core.String value) => $_setString(2, value);
+  set fromUserId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasFromUserId() => $_has(2);
   @$pb.TagNumber(3)
@@ -1299,12 +1316,12 @@ class FriendRequestPush extends $pb.GeneratedMessage {
   void clearPushContent() => $_clearField(10);
 }
 
-/// 好友响应推送 - 下行（gRPC专用，用于通知申请人结果）
+/// 好友响应推送 - 下行（gRPC专用，优化版）
 class FriendResponsePush extends $pb.GeneratedMessage {
   factory FriendResponsePush({
-    $core.String? toUserId,
-    $core.String? requestId,
-    $core.String? fromUserId,
+    $fixnum.Int64? toUserId,
+    $fixnum.Int64? requestId,
+    $fixnum.Int64? fromUserId,
     $core.String? fromUserName,
     $core.String? fromUserAvatar,
     $core.int? status,
@@ -1336,17 +1353,24 @@ class FriendResponsePush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FriendResponsePush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'toUserId', protoName: 'toUserId')
-    ..aOS(2, _omitFieldNames ? '' : 'requestId', protoName: 'requestId')
-    ..aOS(3, _omitFieldNames ? '' : 'fromUserId', protoName: 'fromUserId')
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'toUserId', $pb.PbFieldType.OF6,
+        protoName: 'toUserId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'requestId', $pb.PbFieldType.OF6,
+        protoName: 'requestId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        3, _omitFieldNames ? '' : 'fromUserId', $pb.PbFieldType.OF6,
+        protoName: 'fromUserId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(4, _omitFieldNames ? '' : 'fromUserName', protoName: 'fromUserName')
     ..aOS(5, _omitFieldNames ? '' : 'fromUserAvatar',
         protoName: 'fromUserAvatar')
     ..aI(6, _omitFieldNames ? '' : 'status')
-    ..aInt64(7, _omitFieldNames ? '' : 'responseTime',
-        protoName: 'responseTime')
+    ..a<$fixnum.Int64>(
+        7, _omitFieldNames ? '' : 'responseTime', $pb.PbFieldType.OF6,
+        protoName: 'responseTime', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(8, _omitFieldNames ? '' : 'pushTitle', protoName: 'pushTitle')
     ..aOS(9, _omitFieldNames ? '' : 'pushContent', protoName: 'pushContent')
     ..hasRequiredFields = false;
@@ -1365,35 +1389,33 @@ class FriendResponsePush extends $pb.GeneratedMessage {
   static FriendResponsePush create() => FriendResponsePush._();
   @$core.override
   FriendResponsePush createEmptyInstance() => create();
-  static $pb.PbList<FriendResponsePush> createRepeated() =>
-      $pb.PbList<FriendResponsePush>();
   @$core.pragma('dart2js:noInline')
   static FriendResponsePush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<FriendResponsePush>(create);
   static FriendResponsePush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get toUserId => $_getSZ(0);
+  $fixnum.Int64 get toUserId => $_getI64(0);
   @$pb.TagNumber(1)
-  set toUserId($core.String value) => $_setString(0, value);
+  set toUserId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasToUserId() => $_has(0);
   @$pb.TagNumber(1)
   void clearToUserId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get requestId => $_getSZ(1);
+  $fixnum.Int64 get requestId => $_getI64(1);
   @$pb.TagNumber(2)
-  set requestId($core.String value) => $_setString(1, value);
+  set requestId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasRequestId() => $_has(1);
   @$pb.TagNumber(2)
   void clearRequestId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get fromUserId => $_getSZ(2);
+  $fixnum.Int64 get fromUserId => $_getI64(2);
   @$pb.TagNumber(3)
-  set fromUserId($core.String value) => $_setString(2, value);
+  set fromUserId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasFromUserId() => $_has(2);
   @$pb.TagNumber(3)
@@ -1454,12 +1476,12 @@ class FriendResponsePush extends $pb.GeneratedMessage {
   void clearPushContent() => $_clearField(9);
 }
 
-/// 群聊发送消息请求 - 上行
+/// 群聊发送消息请求 - 上行（优化版，预留）
 class GroupSendReq extends $pb.GeneratedMessage {
   factory GroupSendReq({
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? groupId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? groupId,
     $core.int? format,
     $core.String? content,
     $fixnum.Int64? time,
@@ -1485,14 +1507,18 @@ class GroupSendReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'GroupSendReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(2, _omitFieldNames ? '' : 'from')
-    ..aOS(3, _omitFieldNames ? '' : 'groupId', protoName: 'groupId')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'groupId', $pb.PbFieldType.OF6,
+        protoName: 'groupId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(4, _omitFieldNames ? '' : 'format')
     ..aOS(5, _omitFieldNames ? '' : 'content')
-    ..aInt64(6, _omitFieldNames ? '' : 'time')
+    ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'time', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1509,35 +1535,33 @@ class GroupSendReq extends $pb.GeneratedMessage {
   static GroupSendReq create() => GroupSendReq._();
   @$core.override
   GroupSendReq createEmptyInstance() => create();
-  static $pb.PbList<GroupSendReq> createRepeated() =>
-      $pb.PbList<GroupSendReq>();
   @$core.pragma('dart2js:noInline')
   static GroupSendReq getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GroupSendReq>(create);
   static GroupSendReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get msgId => $_getSZ(0);
+  $fixnum.Int64 get msgId => $_getI64(0);
   @$pb.TagNumber(1)
-  set msgId($core.String value) => $_setString(0, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get from => $_getSZ(1);
+  $fixnum.Int64 get from => $_getI64(1);
   @$pb.TagNumber(2)
-  set from($core.String value) => $_setString(1, value);
+  set from($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasFrom() => $_has(1);
   @$pb.TagNumber(2)
   void clearFrom() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get groupId => $_getSZ(2);
+  $fixnum.Int64 get groupId => $_getI64(2);
   @$pb.TagNumber(3)
-  set groupId($core.String value) => $_setString(2, value);
+  set groupId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasGroupId() => $_has(2);
   @$pb.TagNumber(3)
@@ -1571,14 +1595,14 @@ class GroupSendReq extends $pb.GeneratedMessage {
   void clearTime() => $_clearField(6);
 }
 
-/// 群聊消息推送 - 下行
+/// 群聊消息推送 - 下行（优化版，预留）
 class GroupMsgPush extends $pb.GeneratedMessage {
   factory GroupMsgPush({
-    $core.String? msgId,
-    $core.String? from,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
     $core.String? fromNickname,
     $core.String? fromAvatar,
-    $core.String? groupId,
+    $fixnum.Int64? groupId,
     $core.String? groupName,
     $core.int? format,
     $core.String? content,
@@ -1610,17 +1634,21 @@ class GroupMsgPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'GroupMsgPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(2, _omitFieldNames ? '' : 'from')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(3, _omitFieldNames ? '' : 'fromNickname', protoName: 'fromNickname')
     ..aOS(4, _omitFieldNames ? '' : 'fromAvatar', protoName: 'fromAvatar')
-    ..aOS(5, _omitFieldNames ? '' : 'groupId', protoName: 'groupId')
+    ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'groupId', $pb.PbFieldType.OF6,
+        protoName: 'groupId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(6, _omitFieldNames ? '' : 'groupName', protoName: 'groupName')
     ..aI(7, _omitFieldNames ? '' : 'format')
     ..aOS(8, _omitFieldNames ? '' : 'content')
-    ..aInt64(9, _omitFieldNames ? '' : 'time')
+    ..a<$fixnum.Int64>(9, _omitFieldNames ? '' : 'time', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(10, _omitFieldNames ? '' : 'memberCount', protoName: 'memberCount')
     ..hasRequiredFields = false;
 
@@ -1638,26 +1666,24 @@ class GroupMsgPush extends $pb.GeneratedMessage {
   static GroupMsgPush create() => GroupMsgPush._();
   @$core.override
   GroupMsgPush createEmptyInstance() => create();
-  static $pb.PbList<GroupMsgPush> createRepeated() =>
-      $pb.PbList<GroupMsgPush>();
   @$core.pragma('dart2js:noInline')
   static GroupMsgPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GroupMsgPush>(create);
   static GroupMsgPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get msgId => $_getSZ(0);
+  $fixnum.Int64 get msgId => $_getI64(0);
   @$pb.TagNumber(1)
-  set msgId($core.String value) => $_setString(0, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get from => $_getSZ(1);
+  $fixnum.Int64 get from => $_getI64(1);
   @$pb.TagNumber(2)
-  set from($core.String value) => $_setString(1, value);
+  set from($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasFrom() => $_has(1);
   @$pb.TagNumber(2)
@@ -1682,9 +1708,9 @@ class GroupMsgPush extends $pb.GeneratedMessage {
   void clearFromAvatar() => $_clearField(4);
 
   @$pb.TagNumber(5)
-  $core.String get groupId => $_getSZ(4);
+  $fixnum.Int64 get groupId => $_getI64(4);
   @$pb.TagNumber(5)
-  set groupId($core.String value) => $_setString(4, value);
+  set groupId($fixnum.Int64 value) => $_setInt64(4, value);
   @$pb.TagNumber(5)
   $core.bool hasGroupId() => $_has(4);
   @$pb.TagNumber(5)
@@ -1736,12 +1762,12 @@ class GroupMsgPush extends $pb.GeneratedMessage {
   void clearMemberCount() => $_clearField(10);
 }
 
-/// 群聊消息确认请求 - 上行
+/// 群聊消息确认请求 - 上行（优化版，预留）
 class GroupAckReq extends $pb.GeneratedMessage {
   factory GroupAckReq({
-    $core.String? msgId,
-    $core.String? userId,
-    $core.String? groupId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? userId,
+    $fixnum.Int64? groupId,
     $core.int? status,
   }) {
     final result = create();
@@ -1763,11 +1789,14 @@ class GroupAckReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'GroupAckReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(2, _omitFieldNames ? '' : 'userId', protoName: 'userId')
-    ..aOS(3, _omitFieldNames ? '' : 'groupId', protoName: 'groupId')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'userId', $pb.PbFieldType.OF6,
+        protoName: 'userId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'groupId', $pb.PbFieldType.OF6,
+        protoName: 'groupId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aI(4, _omitFieldNames ? '' : 'status')
     ..hasRequiredFields = false;
 
@@ -1785,34 +1814,33 @@ class GroupAckReq extends $pb.GeneratedMessage {
   static GroupAckReq create() => GroupAckReq._();
   @$core.override
   GroupAckReq createEmptyInstance() => create();
-  static $pb.PbList<GroupAckReq> createRepeated() => $pb.PbList<GroupAckReq>();
   @$core.pragma('dart2js:noInline')
   static GroupAckReq getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GroupAckReq>(create);
   static GroupAckReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get msgId => $_getSZ(0);
+  $fixnum.Int64 get msgId => $_getI64(0);
   @$pb.TagNumber(1)
-  set msgId($core.String value) => $_setString(0, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get userId => $_getSZ(1);
+  $fixnum.Int64 get userId => $_getI64(1);
   @$pb.TagNumber(2)
-  set userId($core.String value) => $_setString(1, value);
+  set userId($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasUserId() => $_has(1);
   @$pb.TagNumber(2)
   void clearUserId() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get groupId => $_getSZ(2);
+  $fixnum.Int64 get groupId => $_getI64(2);
   @$pb.TagNumber(3)
-  set groupId($core.String value) => $_setString(2, value);
+  set groupId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasGroupId() => $_has(2);
   @$pb.TagNumber(3)
@@ -1828,12 +1856,12 @@ class GroupAckReq extends $pb.GeneratedMessage {
   void clearStatus() => $_clearField(4);
 }
 
-/// 群聊撤回消息请求 - 上行
+/// 群聊撤回消息请求 - 上行（优化版，预留）
 class GroupWithdrawReq extends $pb.GeneratedMessage {
   factory GroupWithdrawReq({
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? groupId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? groupId,
     $fixnum.Int64? withdrawTime,
   }) {
     final result = create();
@@ -1855,13 +1883,17 @@ class GroupWithdrawReq extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'GroupWithdrawReq',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(2, _omitFieldNames ? '' : 'from')
-    ..aOS(3, _omitFieldNames ? '' : 'groupId', protoName: 'groupId')
-    ..aInt64(4, _omitFieldNames ? '' : 'withdrawTime',
-        protoName: 'withdrawTime')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'groupId', $pb.PbFieldType.OF6,
+        protoName: 'groupId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        4, _omitFieldNames ? '' : 'withdrawTime', $pb.PbFieldType.OF6,
+        protoName: 'withdrawTime', defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1878,35 +1910,33 @@ class GroupWithdrawReq extends $pb.GeneratedMessage {
   static GroupWithdrawReq create() => GroupWithdrawReq._();
   @$core.override
   GroupWithdrawReq createEmptyInstance() => create();
-  static $pb.PbList<GroupWithdrawReq> createRepeated() =>
-      $pb.PbList<GroupWithdrawReq>();
   @$core.pragma('dart2js:noInline')
   static GroupWithdrawReq getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GroupWithdrawReq>(create);
   static GroupWithdrawReq? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get msgId => $_getSZ(0);
+  $fixnum.Int64 get msgId => $_getI64(0);
   @$pb.TagNumber(1)
-  set msgId($core.String value) => $_setString(0, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get from => $_getSZ(1);
+  $fixnum.Int64 get from => $_getI64(1);
   @$pb.TagNumber(2)
-  set from($core.String value) => $_setString(1, value);
+  set from($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasFrom() => $_has(1);
   @$pb.TagNumber(2)
   void clearFrom() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get groupId => $_getSZ(2);
+  $fixnum.Int64 get groupId => $_getI64(2);
   @$pb.TagNumber(3)
-  set groupId($core.String value) => $_setString(2, value);
+  set groupId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasGroupId() => $_has(2);
   @$pb.TagNumber(3)
@@ -1922,12 +1952,12 @@ class GroupWithdrawReq extends $pb.GeneratedMessage {
   void clearWithdrawTime() => $_clearField(4);
 }
 
-/// 群聊撤回消息推送 - 下行
+/// 群聊撤回消息推送 - 下行（优化版，预留）
 class GroupWithdrawPush extends $pb.GeneratedMessage {
   factory GroupWithdrawPush({
-    $core.String? msgId,
-    $core.String? from,
-    $core.String? groupId,
+    $fixnum.Int64? msgId,
+    $fixnum.Int64? from,
+    $fixnum.Int64? groupId,
     $core.String? operatorNickname,
     $fixnum.Int64? withdrawTime,
     $core.bool? isAdmin,
@@ -1953,15 +1983,19 @@ class GroupWithdrawPush extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'GroupWithdrawPush',
-      package: const $pb.PackageName(_omitMessageNames ? '' : 'xzll.im'),
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'com.xzll.grpc'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'msgId', protoName: 'msgId')
-    ..aOS(2, _omitFieldNames ? '' : 'from')
-    ..aOS(3, _omitFieldNames ? '' : 'groupId', protoName: 'groupId')
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'msgId', $pb.PbFieldType.OF6,
+        protoName: 'msgId', defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'from', $pb.PbFieldType.OF6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'groupId', $pb.PbFieldType.OF6,
+        protoName: 'groupId', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(4, _omitFieldNames ? '' : 'operatorNickname',
         protoName: 'operatorNickname')
-    ..aInt64(5, _omitFieldNames ? '' : 'withdrawTime',
-        protoName: 'withdrawTime')
+    ..a<$fixnum.Int64>(
+        5, _omitFieldNames ? '' : 'withdrawTime', $pb.PbFieldType.OF6,
+        protoName: 'withdrawTime', defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOB(6, _omitFieldNames ? '' : 'isAdmin', protoName: 'isAdmin')
     ..hasRequiredFields = false;
 
@@ -1979,35 +2013,33 @@ class GroupWithdrawPush extends $pb.GeneratedMessage {
   static GroupWithdrawPush create() => GroupWithdrawPush._();
   @$core.override
   GroupWithdrawPush createEmptyInstance() => create();
-  static $pb.PbList<GroupWithdrawPush> createRepeated() =>
-      $pb.PbList<GroupWithdrawPush>();
   @$core.pragma('dart2js:noInline')
   static GroupWithdrawPush getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GroupWithdrawPush>(create);
   static GroupWithdrawPush? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.String get msgId => $_getSZ(0);
+  $fixnum.Int64 get msgId => $_getI64(0);
   @$pb.TagNumber(1)
-  set msgId($core.String value) => $_setString(0, value);
+  set msgId($fixnum.Int64 value) => $_setInt64(0, value);
   @$pb.TagNumber(1)
   $core.bool hasMsgId() => $_has(0);
   @$pb.TagNumber(1)
   void clearMsgId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get from => $_getSZ(1);
+  $fixnum.Int64 get from => $_getI64(1);
   @$pb.TagNumber(2)
-  set from($core.String value) => $_setString(1, value);
+  set from($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(2)
   $core.bool hasFrom() => $_has(1);
   @$pb.TagNumber(2)
   void clearFrom() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get groupId => $_getSZ(2);
+  $fixnum.Int64 get groupId => $_getI64(2);
   @$pb.TagNumber(3)
-  set groupId($core.String value) => $_setString(2, value);
+  set groupId($fixnum.Int64 value) => $_setInt64(2, value);
   @$pb.TagNumber(3)
   $core.bool hasGroupId() => $_has(2);
   @$pb.TagNumber(3)
@@ -2039,6 +2071,49 @@ class GroupWithdrawPush extends $pb.GeneratedMessage {
   $core.bool hasIsAdmin() => $_has(5);
   @$pb.TagNumber(6)
   void clearIsAdmin() => $_clearField(6);
+}
+
+/// 消息转发服务（gRPC - 服务间调用）
+class MessageServiceApi {
+  final $pb.RpcClient _client;
+
+  MessageServiceApi(this._client);
+
+  /// 推送服务端ACK到客户端（下行）
+  $async.Future<WebBaseResponse> responseServerAck2Client(
+          $pb.ClientContext? ctx, ServerAckPush request) =>
+      _client.invoke<WebBaseResponse>(ctx, 'MessageService',
+          'ResponseServerAck2Client', request, WebBaseResponse());
+
+  /// 推送客户端ACK到客户端（下行）
+  $async.Future<WebBaseResponse> responseClientAck2Client(
+          $pb.ClientContext? ctx, ClientAckPush request) =>
+      _client.invoke<WebBaseResponse>(ctx, 'MessageService',
+          'ResponseClientAck2Client', request, WebBaseResponse());
+
+  /// 推送撤回消息到客户端（下行）
+  $async.Future<WebBaseResponse> sendWithdrawMsg2Client(
+          $pb.ClientContext? ctx, WithdrawPush request) =>
+      _client.invoke<WebBaseResponse>(ctx, 'MessageService',
+          'SendWithdrawMsg2Client', request, WebBaseResponse());
+
+  /// 推送好友请求到客户端（下行）
+  $async.Future<WebBaseResponse> pushFriendRequest2Client(
+          $pb.ClientContext? ctx, FriendRequestPush request) =>
+      _client.invoke<WebBaseResponse>(ctx, 'MessageService',
+          'PushFriendRequest2Client', request, WebBaseResponse());
+
+  /// 推送好友响应到客户端（下行）
+  $async.Future<WebBaseResponse> pushFriendResponse2Client(
+          $pb.ClientContext? ctx, FriendResponsePush request) =>
+      _client.invoke<WebBaseResponse>(ctx, 'MessageService',
+          'PushFriendResponse2Client', request, WebBaseResponse());
+
+  /// 跨服务器转发 Protobuf 消息（上行转发）
+  $async.Future<WebBaseResponse> transferC2CMsg(
+          $pb.ClientContext? ctx, ImProtoRequest request) =>
+      _client.invoke<WebBaseResponse>(
+          ctx, 'MessageService', 'TransferC2CMsg', request, WebBaseResponse());
 }
 
 const $core.bool _omitFieldNames =
