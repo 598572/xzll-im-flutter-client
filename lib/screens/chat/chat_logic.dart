@@ -140,8 +140,10 @@ class ChatLogic extends GetxController {
         // 保存接收到的消息到本地数据库
         _saveMessageToDatabase(message);
         
-        // 发送接收确认（双轨制：传递两个ID）
-        _webSocketService.sendReceivedAck(
+        // ✅ 会话界面打开时，自动发送已读确认（不是接收确认）
+        // WebSocketService 已经自动发送了接收确认(未读ACK)，这里只需要发送已读ACK
+        info("👁️ 会话界面打开中，自动发送已读确认");
+        _webSocketService.sendReadAck(
           message.clientMsgId,  // 客户端消息ID
           message.msgId,        // 服务端消息ID
           message.fromUserId,
@@ -264,6 +266,9 @@ class ChatLogic extends GetxController {
         // 将历史消息添加到消息列表（注意：数据库返回的是倒序，需要反转）
         messages.assignAll(localMessages.reversed.toList());
         _scrollToBottom();
+        
+        // ✅ 标记加载的历史消息中的未读消息为已读
+        _markHistoryMessagesAsRead();
       } else {
         info('💭 本地没有历史消息，尝试从服务端获取...');
         // 2. 如果本地没有消息，从服务端获取
@@ -271,6 +276,39 @@ class ChatLogic extends GetxController {
       }
     } catch (e) {
       error('❌ 加载历史消息失败: $e');
+    }
+  }
+  
+  /// 标记历史消息中的未读消息为已读
+  void _markHistoryMessagesAsRead() {
+    final currentUserId = _appData.user.value.id;
+    
+    info('👁️ 检查历史消息中的未读消息...');
+    int unreadCount = 0;
+    
+    for (var message in messages) {
+      // 只处理接收到的未读消息（不是自己发的）
+      if (message.toUserId == currentUserId && 
+          message.fromUserId != currentUserId &&
+          message.status == MessageStatus.unRead) {
+        
+        unreadCount++;
+        info('👁️ 发送已读确认 - clientMsgId: ${message.clientMsgId}, msgId: ${message.msgId}');
+        
+        _webSocketService.sendReadAck(
+          message.clientMsgId,
+          message.msgId,
+          message.fromUserId,
+          message.toUserId,
+          message.chatId,
+        );
+      }
+    }
+    
+    if (unreadCount > 0) {
+      info('✅ 已为 $unreadCount 条历史消息发送已读确认');
+    } else {
+      info('💡 没有未读的历史消息');
     }
   }
   
@@ -321,6 +359,9 @@ class ChatLogic extends GetxController {
             // 首次加载，直接设置消息列表
             messages.assignAll(serverMessages);
             _scrollToBottom();
+            
+            // ✅ 标记从服务端加载的历史消息中的未读消息为已读
+            _markHistoryMessagesAsRead();
           } else {
             // 加载更多消息，插入到列表开头
             messages.insertAll(0, serverMessages);

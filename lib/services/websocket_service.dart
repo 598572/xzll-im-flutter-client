@@ -18,6 +18,7 @@ import 'package:xzll_im_flutter_client/models/enum/connectivity_status.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_status.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_type.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
+import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/utils/uuid_generator.dart';
 
 /// WebSocket服务类 - Protobuf版本
@@ -26,6 +27,9 @@ class WebSocketService extends GetxService {
 
   // ✅ 延迟获取 AppData，避免在 WebSocketService 初始化时 AppData 还未注册
   AppData get appData => Get.find<AppData>();
+  
+  // ✅ 数据库服务，用于保存消息
+  DataBaseService get _databaseService => Get.find<DataBaseService>();
 
   String get _currentUserId => appData.user.value.id;
 
@@ -42,6 +46,14 @@ class WebSocketService extends GetxService {
   static const Duration _heartbeatInterval = Duration(seconds: 25); // 心跳间隔25秒（服务器30秒空闲检测）
   static const Duration _heartbeatTimeout = Duration(seconds: 10); // 心跳超时10秒
   bool _isWaitingForPong = false;
+  
+  // ✅ 自动重连增强
+  Timer? _reconnectTimer; // 重连定时器
+  int _reconnectAttempts = 0; // 当前重连尝试次数
+  static const int _maxReconnectAttempts = 999999; // 最大重连次数（几乎无限）
+  static const Duration _minReconnectDelay = Duration(seconds: 1); // 最小重连间隔
+  static const Duration _maxReconnectDelay = Duration(seconds: 30); // 最大重连间隔
+  bool _isManualDisconnect = false; // 是否是手动断开连接
 
   @override
   void onInit() {
@@ -51,16 +63,22 @@ class WebSocketService extends GetxService {
 
   ///监听网络状态的变化
   void _onNetworkStatusChanged(ConnectivityStatus status) async {
-    debug(status.name);
+    info("📡 网络状态变化: ${status.name}");
     switch (status) {
       case ConnectivityStatus.normal:
-        retryWebSocket();
+        info("✅ 网络已恢复，准备重连...");
+        _reconnectAttempts = 0; // ✅ 重置重连次数
+        _scheduleReconnect(immediate: true); // ✅ 立即重连
         break;
       case ConnectivityStatus.none:
         {
+          info("❌ 网络断开");
+          _stopHeartbeat();
+          _cancelReconnect(); // ✅ 取消重连定时器
           if (_channel != null) {
-            _channel!.sink.close();
+            await _channel!.sink.close();
           }
+          AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
           break;
         }
     }
@@ -72,6 +90,7 @@ class WebSocketService extends GetxService {
       waring("⚠️ 用户未登录，无法初始化WebSocket");
       return;
     }
+    
     final wsUrl = AppConfig.getWebSocketUrl(_currentUserId);
     final headers = {
       'Connection': 'Upgrade',
@@ -79,21 +98,30 @@ class WebSocketService extends GetxService {
       'token': appData.token.value,
       'uid': _currentUserId,
     };
+    
     try {
       AppEvent.webSocketStatus.add(WebSocketStatus.connecting);
       _channel = IOWebSocketChannel.connect(wsUrl, headers: headers);
       AppEvent.webSocketStatus.add(WebSocketStatus.connected);
+      
+      // ✅ 连接成功，重置重连相关状态
       retryCount = AppConfig.webSocketRetryCount;
+      _reconnectAttempts = 0;
+      _cancelReconnect();
+      
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
       
-      // 连接成功，启动心跳机制（消息ID改为服务端生成，无需客户端获取）
-      info("🔗 WebSocket连接成功");
+      // 连接成功，启动心跳机制
+      info("✅ WebSocket连接成功");
       
       // 启动心跳机制
       _startHeartbeat();
     } catch (e) {
       error("❌ WebSocket连接失败: $e");
       AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
+      
+      // ✅ 连接失败，触发自动重连
+      _scheduleReconnect();
     }
   }
 
@@ -123,7 +151,13 @@ class WebSocketService extends GetxService {
     // 停止心跳
     _stopHeartbeat();
     
-    await retryWebSocket();
+    // ✅ 如果不是手动断开，则触发自动重连
+    if (!_isManualDisconnect) {
+      info("🔄 连接意外断开，准备自动重连...");
+      _scheduleReconnect();
+    } else {
+      info("👋 手动断开连接，不进行重连");
+    }
   }
 
   void _onError(Object e, StackTrace stackTrace) {
@@ -132,6 +166,12 @@ class WebSocketService extends GetxService {
     
     // 停止心跳
     _stopHeartbeat();
+    
+    // ✅ 发生错误，触发自动重连
+    if (!_isManualDisconnect) {
+      info("🔄 连接出错，准备自动重连...");
+      _scheduleReconnect();
+    }
   }
 
   // ==================== 消息ID获取机制已移除 ====================
@@ -238,10 +278,16 @@ class WebSocketService extends GetxService {
         status: MessageStatus.unRead, // 接收到的消息显示为未读状态
       );
 
+      // ✅ 发送事件通知（给打开的聊天界面）
       AppEvent.onMessageReceived.add(message);
+
+      // ✅ 保存消息到本地数据库（关键修复！）
+      _saveMessageToDatabase(message);
 
       // 自动发送接收确认（双轨制：传递两个ID）
       sendReceivedAck(pushMsg.clientMsgId, pushMsg.msgId, pushMsg.from, pushMsg.to, pushMsg.chatId);
+      
+      // 更新会话列表
       _updateConversationOnNewMessage(message);
     } catch (e, stackTrace) {
       error("❌ 解析 C2CMsgPush 失败: $e\n$stackTrace");
@@ -440,6 +486,36 @@ class WebSocketService extends GetxService {
     } catch (e, stackTrace) {
       error("❌ 发送消息失败: $e\n$stackTrace");
       return null;
+    }
+  }
+
+  /// 保存消息到本地数据库
+  Future<void> _saveMessageToDatabase(ChatMessage message) async {
+    try {
+      info("💾 保存消息到数据库: msgId=${message.msgId}, content=${message.content}");
+      await _databaseService.insertMessage(message);
+      
+      // 同时更新会话信息
+      Conversation updatedConversation = Conversation(
+        name: message.fromUserId,
+        headImage: 'assets/other_headImage.png',
+        lastMessage: formatLastMessage(message),
+        timestamp: formatMessageTimestamp(message.timestamp),
+        userId: message.fromUserId,
+        unreadCount: 1,
+        targetUserId: message.fromUserId,
+        targetUserName: message.fromUserId,
+        targetUserAvatar: 'assets/other_headImage.png',
+        lastMsgFormat: MessageType.fromCode(message.type),
+        lastMsgId: message.msgId,
+        lastMsgTime: message.timestamp.millisecondsSinceEpoch,
+        chatId: message.chatId,
+      );
+      
+      await _databaseService.insertOrUpdateConversation(updatedConversation);
+      info("✅ 消息和会话已保存到数据库");
+    } catch (e) {
+      error("❌ 保存消息到数据库失败: $e");
     }
   }
 
@@ -661,9 +737,18 @@ class WebSocketService extends GetxService {
     waring("💔 心跳超时，准备重连");
     _isWaitingForPong = false;
     
-    // 心跳超时，认为连接有问题，触发重连
+    // 停止心跳
+    _stopHeartbeat();
+    
+    // 关闭当前连接
+    _channel?.sink.close();
+    
+    // 心跳超时，认为连接有问题，触发自动重连
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
-    retryWebSocket();
+    
+    // ✅ 使用智能重连机制
+    info("🔄 心跳超时，触发自动重连...");
+    _scheduleReconnect();
   }
   
   /// 格式化时间显示
@@ -674,18 +759,108 @@ class WebSocketService extends GetxService {
   }
 
   void disconnect() async {
-    info("🔌 断开WebSocket连接");
+    info("🔌 手动断开WebSocket连接");
+    
+    // ✅ 标记为手动断开，防止自动重连
+    _isManualDisconnect = true;
     
     // 停止心跳
     _stopHeartbeat();
     
+    // 取消重连定时器
+    _cancelReconnect();
+    
     await _channel?.sink.close();
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
+  }
+  
+  // ==================== 智能自动重连机制 ====================
+  
+  /// 安排重连（指数退避算法）
+  void _scheduleReconnect({bool immediate = false}) {
+    // 如果是手动断开，不进行重连
+    if (_isManualDisconnect) {
+      info("⏸️ 手动断开状态，跳过重连");
+      return;
+    }
+    
+    // 检查是否已达到最大重连次数
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      error("❌ 已达到最大重连次数 ($_maxReconnectAttempts)，停止重连");
+      return;
+    }
+    
+    // 取消之前的重连定时器
+    _cancelReconnect();
+    
+    // 计算重连延迟（指数退避：1s, 2s, 4s, 8s, 16s, 30s）
+    Duration delay;
+    if (immediate) {
+      delay = Duration.zero;
+    } else {
+      final exponentialDelay = _minReconnectDelay * (1 << _reconnectAttempts.clamp(0, 5));
+      delay = exponentialDelay > _maxReconnectDelay ? _maxReconnectDelay : exponentialDelay;
+    }
+    
+    _reconnectAttempts++;
+    info("🔄 安排第 $_reconnectAttempts 次重连，延迟: ${delay.inSeconds}秒");
+    
+    // 设置重连定时器
+    _reconnectTimer = Timer(delay, () {
+      info("🔄 开始第 $_reconnectAttempts 次重连尝试...");
+      _performReconnect();
+    });
+  }
+  
+  /// 执行重连
+  Future<void> _performReconnect() async {
+    // 再次检查是否手动断开
+    if (_isManualDisconnect) {
+      info("⏸️ 手动断开状态，取消重连");
+      return;
+    }
+    
+    // 检查是否已经连接
+    if (AppEvent.webSocketStatus.value == WebSocketStatus.connected) {
+      info("✅ 已经处于连接状态，跳过重连");
+      _reconnectAttempts = 0;
+      return;
+    }
+    
+    info("🔄 正在执行重连...");
+    AppEvent.webSocketStatus.add(WebSocketStatus.reconnecting);
+    
+    try {
+      // 关闭旧连接
+      await _channel?.sink.close();
+      
+      // 尝试重新连接
+      await initWebSocket();
+      
+      // initWebSocket 内部会处理成功和失败的情况
+    } catch (e) {
+      error("❌ 重连失败: $e");
+      AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
+      
+      // 继续安排下一次重连
+      _scheduleReconnect();
+    }
+  }
+  
+  /// 取消重连定时器
+  void _cancelReconnect() {
+    if (_reconnectTimer != null) {
+      info("⏹️ 取消重连定时器");
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+    }
   }
 
   @override
   void onClose() {
+    _isManualDisconnect = true;
     _stopHeartbeat();
+    _cancelReconnect();
     _channel?.sink.close();
     super.onClose();
   }
