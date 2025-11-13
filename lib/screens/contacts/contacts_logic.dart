@@ -23,6 +23,9 @@ class ContactsLogic extends GetxController {
   
   /// 好友申请推送事件订阅
   StreamSubscription? _friendRequestSubscription;
+  
+  /// 好友列表刷新事件订阅
+  StreamSubscription? _friendListRefreshSubscription;
 
   @override
   void onInit() {
@@ -30,6 +33,7 @@ class ContactsLogic extends GetxController {
     loadFriendList();
     loadUnreadFriendRequestCount();
     _setupFriendRequestListener();
+    _setupFriendListRefreshListener();
   }
 
   /// 加载好友列表
@@ -145,6 +149,16 @@ class ContactsLogic extends GetxController {
     });
   }
 
+  /// 设置好友列表刷新监听
+  void _setupFriendListRefreshListener() {
+    _friendListRefreshSubscription = AppEvent.onFriendListRefresh.stream.listen((bool shouldRefresh) {
+      if (shouldRefresh) {
+        info("🔄 收到好友列表刷新事件，重新加载好友列表");
+        loadFriendList();
+      }
+    });
+  }
+
   /// 刷新未读数量（在用户查看好友申请后调用）
   void refreshUnreadCount() {
     loadUnreadFriendRequestCount();
@@ -154,6 +168,7 @@ class ContactsLogic extends GetxController {
   void onClose() {
     // 清理订阅
     _friendRequestSubscription?.cancel();
+    _friendListRefreshSubscription?.cancel();
     super.onClose();
   }
 }

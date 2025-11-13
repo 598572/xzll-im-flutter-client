@@ -495,6 +495,12 @@ class WebSocketService extends GetxService {
       );
 
       AppEvent.onFriendRequestPush.add(pushMessage);
+
+      // ✅ 如果好友申请被同意，触发好友列表刷新
+      if (response.status == 1) {
+        info("🔄 好友申请已通过，触发好友列表刷新");
+        AppEvent.onFriendListRefresh.add(true);
+      }
     } catch (e, stackTrace) {
       error("❌ 解析好友响应失败: $e\n$stackTrace");
     }
@@ -541,6 +547,9 @@ class WebSocketService extends GetxService {
         MessageStatusChangedModel(messageId: clientMsgId, messageStatus: MessageStatus.sending),
       );
 
+      // ✅ 发送消息后，立即更新会话列表
+      _updateConversationOnSendMessage(message);
+
       return message; // 返回带客户端ID的消息对象
     } catch (e, stackTrace) {
       error("❌ 发送消息失败: $e\n$stackTrace");
@@ -581,15 +590,51 @@ class WebSocketService extends GetxService {
   // 更新会话列表（收到新消息时）
   void _updateConversationOnNewMessage(ChatMessage message) {
     info("📋 更新会话列表 - 收到新消息");
+    
+    // 当前用户ID
+    String currentUserId = appData.user.value.id;
+    
+    // 对方是发送人（因为是收到的消息）
+    String targetUserId = message.fromUserId;
+    
     Conversation updatedConversation = Conversation(
-      name: message.fromUserId,
+      name: targetUserId,
       headImage: 'assets/other_headImage.png',
       lastMessage: formatLastMessage(message),
       timestamp: formatMessageTimestamp(message.timestamp),
-      userId: message.fromUserId,
+      userId: currentUserId,
       unreadCount: 1,
-      targetUserId: message.fromUserId,
-      targetUserName: message.fromUserId,
+      targetUserId: targetUserId,
+      targetUserName: targetUserId,
+      targetUserAvatar: 'assets/other_headImage.png',
+      lastMsgFormat: MessageType.fromCode(message.type),
+      lastMsgId: message.msgId,
+      lastMsgTime: message.timestamp.millisecondsSinceEpoch,
+      chatId: message.chatId, // 使用消息中的chatId
+    );
+
+    AppEvent.onConversationUpdated.add(updatedConversation);
+  }
+
+  // 更新会话列表（发送消息时）
+  void _updateConversationOnSendMessage(ChatMessage message) {
+    info("📋 更新会话列表 - 发送新消息");
+    
+    // 当前用户ID
+    String currentUserId = appData.user.value.id;
+    
+    // 对方是接收人（因为是发送的消息）
+    String targetUserId = message.toUserId;
+    
+    Conversation updatedConversation = Conversation(
+      name: targetUserId,
+      headImage: 'assets/other_headImage.png',
+      lastMessage: formatLastMessage(message),
+      timestamp: formatMessageTimestamp(message.timestamp),
+      userId: currentUserId,
+      unreadCount: 0, // 自己发送的消息，未读数为0
+      targetUserId: targetUserId,
+      targetUserName: targetUserId,
       targetUserAvatar: 'assets/other_headImage.png',
       lastMsgFormat: MessageType.fromCode(message.type),
       lastMsgId: message.msgId,

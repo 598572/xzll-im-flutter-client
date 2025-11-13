@@ -52,4 +52,9 @@ sealed class AppEvent {
   /// [String] 当前打开的会话ID，空字符串表示没有打开的会话
   /// 通过设置[currentOpenChatId]来通知当前会话状态
   static BehaviorSubject<String> currentOpenChatId = BehaviorSubject<String>.seeded('');
+
+  /// 好友列表刷新事件
+  /// [bool] true表示需要刷新好友列表
+  /// 通过订阅[onFriendListRefresh]来监听好友列表刷新事件
+  static PublishSubject<bool> onFriendListRefresh = PublishSubject<bool>();
 }
