@@ -41,11 +41,9 @@ class WebSocketService extends GetxService {
   // final List<String> _msgIds = [];  // 已删除
   // bool _isGettingMsgIds = false;    // 已删除
 
-  // 心跳相关（优化版：移除应用层心跳，仅保留连接健康检查）
-  Timer? _heartbeatTimer;
-  DateTime? _lastHeartbeatTime;
-  static const Duration _heartbeatInterval = Duration(seconds: 25); // 心跳检查间隔25秒（服务器30秒空闲检测）
-  // ✅ 已移除：_heartbeatTimeoutTimer, _isWaitingForPong（不再需要应用层超时检测）
+  // 心跳相关（优化版：完全依赖WebSocket协议层pingInterval自动处理）
+  // ✅ 已移除：_heartbeatTimer, _lastHeartbeatTime, _heartbeatInterval（不再需要应用层心跳检查）
+  // ✅ 心跳由 IOWebSocketChannel 的 pingInterval 参数自动处理（协议层ping/pong帧）
   
   // ✅ 自动重连增强
   Timer? _reconnectTimer; // 重连定时器
@@ -54,11 +52,22 @@ class WebSocketService extends GetxService {
   static const Duration _minReconnectDelay = Duration(seconds: 1); // 最小重连间隔
   static const Duration _maxReconnectDelay = Duration(seconds: 30); // 最大重连间隔
   bool _isManualDisconnect = false; // 是否是手动断开连接
+  bool _isAppInBackground = false; // 应用是否在后台
 
   @override
   void onInit() {
     super.onInit();
     AppEvent.networkStatus.stream.listen(_onNetworkStatusChanged);
+  }
+  
+  /// 设置应用是否在后台（由AppLifecycleService调用）
+  void setAppInBackground(bool inBackground) {
+    _isAppInBackground = inBackground;
+    if (inBackground) {
+      info("📱 应用进入后台（协议层心跳继续工作）");
+    } else {
+      info("📱 应用回到前台（协议层心跳继续工作）");
+    }
   }
 
   ///监听网络状态的变化
@@ -73,7 +82,6 @@ class WebSocketService extends GetxService {
       case ConnectivityStatus.none:
         {
           info("❌ 网络断开");
-          _stopHeartbeat();
           _cancelReconnect(); // ✅ 取消重连定时器
           if (_channel != null) {
             await _channel!.sink.close();
@@ -106,7 +114,6 @@ class WebSocketService extends GetxService {
         error("关闭旧连接失败: $e");
       }
       _channel = null;
-      _stopHeartbeat();
     }
     
     final wsUrl = AppConfig.getWebSocketUrl(_currentUserId);
@@ -120,7 +127,13 @@ class WebSocketService extends GetxService {
     try {
       info("🔗 开始建立WebSocket连接...");
       AppEvent.webSocketStatus.add(WebSocketStatus.connecting);
-      _channel = IOWebSocketChannel.connect(wsUrl, headers: headers);
+      
+      // ✅ 创建WebSocket连接，启用ping/pong帧自动处理 不使用应用层ping、pong 改用协议层，性能好，无需手动处理。
+      _channel = IOWebSocketChannel.connect(
+        wsUrl, 
+        headers: headers,
+        pingInterval: Duration(seconds: 25), // 启用客户端ping
+      );
       AppEvent.webSocketStatus.add(WebSocketStatus.connected);
       
       // ✅ 连接成功，重置重连相关状态
@@ -130,11 +143,8 @@ class WebSocketService extends GetxService {
       
       _channel?.stream.listen(_onData, onError: _onError, onDone: _onDone);
       
-      // 连接成功，启动心跳机制
-      info("✅ WebSocket连接成功");
-      
-      // 启动心跳机制
-      _startHeartbeat();
+      // 连接成功，协议层心跳自动工作（pingInterval已配置）
+      info("✅ WebSocket连接成功（协议层心跳已启用）");
     } catch (e) {
       error("❌ WebSocket连接失败: $e");
       AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
@@ -167,9 +177,6 @@ class WebSocketService extends GetxService {
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
     waring("🔌 WebSocket连接已关闭");
     
-    // 停止心跳
-    _stopHeartbeat();
-    
     // ✅ 如果不是手动断开，则触发自动重连
     if (!_isManualDisconnect) {
       info("🔄 连接意外断开，准备自动重连...");
@@ -182,9 +189,6 @@ class WebSocketService extends GetxService {
   void _onError(Object e, StackTrace stackTrace) {
     AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
     error("❌ WebSocket错误: $e  $stackTrace");
-    
-    // 停止心跳
-    _stopHeartbeat();
     
     // ✅ 发生错误，触发自动重连
     if (!_isManualDisconnect) {
@@ -200,11 +204,23 @@ class WebSocketService extends GetxService {
   // 处理接收到的消息
   void _onData(dynamic message) {
     try {
-      // ✅ 已移除应用层心跳响应处理
-      // WebSocketChannel 会自动处理协议层的 pong 帧
-      // 如果收到文本消息，说明是异常情况
+      // ✅ 调试：打印接收到的消息类型和内容
+      info("🔍 [DEBUG] 收到消息 - 类型: ${message.runtimeType}");
       if (message is String) {
-        waring("⚠️ 收到意外的文本消息: $message");
+        info("🔍 [DEBUG] 文本消息内容: '$message'");
+      } else if (message is List<int>) {
+        info("🔍 [DEBUG] 二进制消息长度: ${message.length}");
+        if (message.length <= 20) { // 只打印短消息的内容
+          info("🔍 [DEBUG] 二进制消息内容: $message");
+          String textForm = String.fromCharCodes(message);
+          info("🔍 [DEBUG] 转换为文本: '$textForm'");
+        }
+      }
+      
+      // ✅ 文本消息处理（服务端仅支持 Protobuf 二进制格式）
+      if (message is String) {
+        // 服务端不接受文本消息，如果收到说明有问题
+        info("⚠️ 收到意外的文本消息（服务端仅支持 Protobuf）: $message");
         return;
       }
       
@@ -765,7 +781,7 @@ class WebSocketService extends GetxService {
     info("📊 WebSocket连接状态: ${_channel != null ? '已连接' : '未连接'}");
     info("📊 当前用户ID: $_currentUserId");
     info("📊 WebSocket状态: ${AppEvent.webSocketStatus.value}");
-    info("💓 心跳状态: 协议层自动处理（无需应用层检测）");
+    info("💓 心跳状态: 协议层自动处理（pingInterval: 25秒）");
     info("=====================================");
   }
 
@@ -773,93 +789,14 @@ class WebSocketService extends GetxService {
   // forceGetMsgIds() 方法已移除，消息ID现在由服务端生成
 
   // ==================== 心跳机制 ====================
-  
-  /// 启动心跳定时器
-  void _startHeartbeat() {
-    // 停止之前的定时器（如果有）
-    _stopHeartbeat();
-    
-    info("💓 启动心跳机制，间隔: ${_heartbeatInterval.inSeconds}秒");
-    
-    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (timer) {
-      if (_channel != null && AppEvent.webSocketStatus.value == WebSocketStatus.connected) {
-        _sendHeartbeat();
-      } else {
-        info("⚠️ WebSocket未连接，停止心跳");
-        _stopHeartbeat();
-      }
-    });
-  }
-  
-  /// 停止心跳定时器
-  void _stopHeartbeat() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-    info("💓 心跳检查已停止");
-  }
-  
-  /// 发送心跳ping（优化版：移除应用层心跳，依赖WebSocket协议层）
-  void _sendHeartbeat() {
-    // ✅ 优化说明：
-    // 1. WebSocketChannel 会自动处理协议层的 ping/pong 帧
-    // 2. 服务端也会主动发送 PingWebSocketFrame
-    // 3. 不需要应用层发送文本消息 "ping"（会导致服务端断开连接）
-    // 4. 此方法现在仅用于连接健康检查
-    
-    try {
-      _lastHeartbeatTime = DateTime.now();
-      
-      // ✅ 只做连接状态检查，不发送任何消息
-      if (_channel == null || AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
-        waring("⚠️ WebSocket连接异常，触发重连");
-        _handleHeartbeatTimeout();
-        return;
-      }
-      
-      info("💓 [${_formatTime(_lastHeartbeatTime!)}] 心跳检查正常（依赖协议层 ping/pong）");
-      
-      // ✅ 不需要超时检测，WebSocket 底层会处理
-      // 如果连接真的断开，_onDone 或 _onError 会被触发
-      
-    } catch (e) {
-      error("❌ 心跳检查失败: $e");
-      _handleHeartbeatTimeout();
-    }
-  }
-  
-  /// 处理心跳超时（连接异常检测）
-  void _handleHeartbeatTimeout() {
-    waring("💔 连接健康检查失败，准备重连");
-    
-    // 停止心跳
-    _stopHeartbeat();
-    
-    // 关闭当前连接
-    _channel?.sink.close();
-    
-    // 心跳超时，认为连接有问题，触发自动重连
-    AppEvent.webSocketStatus.add(WebSocketStatus.disconnected);
-    
-    // ✅ 使用智能重连机制
-    info("🔄 心跳超时，触发自动重连...");
-    _scheduleReconnect();
-  }
-  
-  /// 格式化时间显示
-  String _formatTime(DateTime time) {
-    return "${time.hour.toString().padLeft(2, '0')}:"
-           "${time.minute.toString().padLeft(2, '0')}:"
-           "${time.second.toString().padLeft(2, '0')}";
-  }
+  // ✅ 心跳完全由 WebSocket 协议层处理（IOWebSocketChannel 的 pingInterval 参数）
+  // ✅ 无需应用层心跳检查，连接断开时会自动触发 _onDone 或 _onError
 
   void disconnect() async {
     info("🔌 手动断开WebSocket连接");
     
     // ✅ 标记为手动断开，防止自动重连
     _isManualDisconnect = true;
-    
-    // 停止心跳
-    _stopHeartbeat();
     
     // 取消重连定时器
     _cancelReconnect();
@@ -894,10 +831,19 @@ class WebSocketService extends GetxService {
     } else {
       final exponentialDelay = _minReconnectDelay * (1 << _reconnectAttempts.clamp(0, 5));
       delay = exponentialDelay > _maxReconnectDelay ? _maxReconnectDelay : exponentialDelay;
+      
+      // ✅ 如果应用在后台，使用更长的重连间隔以节省资源
+      if (_isAppInBackground) {
+        delay = delay * 2; // 后台重连间隔加倍
+        if (delay > Duration(seconds: 60)) {
+          delay = Duration(seconds: 60); // 最长60秒
+        }
+      }
     }
     
     _reconnectAttempts++;
-    info("🔄 安排第 $_reconnectAttempts 次重连，延迟: ${delay.inSeconds}秒");
+    final bgInfo = _isAppInBackground ? "（后台模式）" : "";
+    info("🔄 安排第 $_reconnectAttempts 次重连$bgInfo，延迟: ${delay.inSeconds}秒");
     
     // 设置重连定时器
     _reconnectTimer = Timer(delay, () {
@@ -953,7 +899,6 @@ class WebSocketService extends GetxService {
   @override
   void onClose() {
     _isManualDisconnect = true;
-    _stopHeartbeat();
     _cancelReconnect();
     _channel?.sink.close();
     super.onClose();

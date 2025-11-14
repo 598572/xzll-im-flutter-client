@@ -81,7 +81,7 @@ class ChatLogic extends GetxController {
     // ✅ 只检查连接状态，不重复初始化
     if (AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
       info("⚠️ WebSocket未连接，尝试初始化...");
-      await _webSocketService.initWebSocket();
+    await _webSocketService.initWebSocket();
     } else {
       info("✅ WebSocket已连接，可以正常使用");
     }
