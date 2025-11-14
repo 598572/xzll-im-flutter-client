@@ -25,7 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   List<ChatMessage> messages = [];
   final ScrollController _scrollController = ScrollController();
-  
+
   // ✅ WebSocketService 实例获取器
   WebSocketService get _wsService => Get.find<WebSocketService>();
 
@@ -36,16 +36,16 @@ class _ChatScreenState extends State<ChatScreen> {
     _setupMessageStatusListener();
     _markConversationMessagesAsRead();
   }
-  
+
   /// 标记当前会话的所有未读消息为已读
   void _markConversationMessagesAsRead() {
     info("👁️ 进入聊天界面，标记消息为已读...");
     final currentUserId = AppData.to.user.value.id;
-    
+
     // 遍历当前会话的所有消息，找到未读的消息并发送已读ACK
     for (var message in messages) {
       // 只处理接收到的未读消息（不是自己发的）
-      if (message.toUserId == currentUserId && 
+      if (message.toUserId == currentUserId &&
           message.fromUserId != currentUserId &&
           message.status == MessageStatus.unRead) {
         info("👁️ 发送已读确认 - clientMsgId: ${message.clientMsgId}, msgId: ${message.msgId}");
@@ -76,24 +76,24 @@ class _ChatScreenState extends State<ChatScreen> {
     // 监听消息状态变化
     AppEvent.onMessageStatusChanged.stream.listen((MessageStatusChangedModel statusModel) {
       info("📊 消息状态更新: msgId=${statusModel.messageId}, status=${statusModel.messageStatus.desc}");
-      
+
       if (mounted) {
         setState(() {
           // 使用双ID匹配方法查找消息
           int index = MessageIdUpdater.findMessageIndex(messages, statusModel.messageId);
-          
+
           if (index != -1) {
             // 更新消息状态
             ChatMessage updatedMessage = messages[index].copyWith(
               status: statusModel.messageStatus,
             );
-            
+
             // ✅ 如果携带了 serverMsgId，说明这是 SERVER_ACK，需要更新 msgId
             if (statusModel.serverMsgId != null && statusModel.serverMsgId!.isNotEmpty) {
               info("✅ 收到 SERVER_ACK，更新 msgId: ${statusModel.serverMsgId}");
               updatedMessage = updatedMessage.copyWith(msgId: statusModel.serverMsgId);
             }
-            
+
             messages[index] = updatedMessage;
           } else {
             waring("⚠️ 未找到消息: ${statusModel.messageId}");
@@ -107,14 +107,14 @@ class _ChatScreenState extends State<ChatScreen> {
     // 监听接收到的消息
     AppEvent.onMessageReceived.stream.listen((ChatMessage message) {
       info("📨 收到新消息: ${message.content}");
-      
+
       if (mounted) {
         setState(() {
           messages.add(message);
         });
         // 滚动到底部显示新消息
         _scrollToBottom();
-        
+
         // ✅ 如果是接收到的消息（不是自己发的），自动发送已读ACK
         final currentUserId = AppData.to.user.value.id;
         if (message.toUserId == currentUserId && message.fromUserId != currentUserId) {
@@ -179,9 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           int index = messages.lastIndexOf(message);
           if (index != -1) {
-            messages[index] = messages[index].copyWith(
-              status: MessageStatus.fail,
-            );
+            messages[index] = messages[index].copyWith(status: MessageStatus.fail);
           }
         });
       }
