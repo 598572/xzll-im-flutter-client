@@ -42,6 +42,22 @@ final $typed_data.Uint8List msgTypeDescriptor = $convert.base64Decode(
     'IKDkZSSUVORF9SRVFVRVNUEAsSEwoPRlJJRU5EX1JFU1BPTlNFEAwSFQoRR0VUX0JBVENIX01T'
     'R19JRFMQBBIWChJQVVNIX0JBVENIX01TR19JRFMQBg==');
 
+@$core.Deprecated('Use webBaseResponseDescriptor instead')
+const WebBaseResponse$json = {
+  '1': 'WebBaseResponse',
+  '2': [
+    {'1': 'code', '3': 1, '4': 1, '5': 5, '10': 'code'},
+    {'1': 'message', '3': 2, '4': 1, '5': 9, '10': 'message'},
+    {'1': 'data', '3': 3, '4': 1, '5': 9, '10': 'data'},
+    {'1': 'success', '3': 4, '4': 1, '5': 8, '10': 'success'},
+  ],
+};
+
+/// Descriptor for `WebBaseResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List webBaseResponseDescriptor = $convert.base64Decode(
+    'Cg9XZWJCYXNlUmVzcG9uc2USEgoEY29kZRgBIAEoBVIEY29kZRIYCgdtZXNzYWdlGAIgASgJUg'
+    'dtZXNzYWdlEhIKBGRhdGEYAyABKAlSBGRhdGESGAoHc3VjY2VzcxgEIAEoCFIHc3VjY2Vzcw==');
+
 @$core.Deprecated('Use imProtoRequestDescriptor instead')
 const ImProtoRequest$json = {
   '1': 'ImProtoRequest',
@@ -51,7 +67,7 @@ const ImProtoRequest$json = {
       '3': 1,
       '4': 1,
       '5': 14,
-      '6': '.xzll.im.MsgType',
+      '6': '.com.xzll.grpc.MsgType',
       '10': 'type'
     },
     {'1': 'payload', '3': 2, '4': 1, '5': 12, '10': 'payload'},
@@ -60,8 +76,8 @@ const ImProtoRequest$json = {
 
 /// Descriptor for `ImProtoRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List imProtoRequestDescriptor = $convert.base64Decode(
-    'Cg5JbVByb3RvUmVxdWVzdBIkCgR0eXBlGAEgASgOMhAueHpsbC5pbS5Nc2dUeXBlUgR0eXBlEh'
-    'gKB3BheWxvYWQYAiABKAxSB3BheWxvYWQ=');
+    'Cg5JbVByb3RvUmVxdWVzdBIqCgR0eXBlGAEgASgOMhYuY29tLnh6bGwuZ3JwYy5Nc2dUeXBlUg'
+    'R0eXBlEhgKB3BheWxvYWQYAiABKAxSB3BheWxvYWQ=');
 
 @$core.Deprecated('Use imProtoResponseDescriptor instead')
 const ImProtoResponse$json = {
@@ -72,7 +88,7 @@ const ImProtoResponse$json = {
       '3': 1,
       '4': 1,
       '5': 14,
-      '6': '.xzll.im.MsgType',
+      '6': '.com.xzll.grpc.MsgType',
       '10': 'type'
     },
     {'1': 'payload', '3': 2, '4': 1, '5': 12, '10': 'payload'},
@@ -83,121 +99,116 @@ const ImProtoResponse$json = {
 
 /// Descriptor for `ImProtoResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List imProtoResponseDescriptor = $convert.base64Decode(
-    'Cg9JbVByb3RvUmVzcG9uc2USJAoEdHlwZRgBIAEoDjIQLnh6bGwuaW0uTXNnVHlwZVIEdHlwZR'
-    'IYCgdwYXlsb2FkGAIgASgMUgdwYXlsb2FkEhIKBGNvZGUYAyABKAVSBGNvZGUSEAoDbXNnGAQg'
-    'ASgJUgNtc2c=');
+    'Cg9JbVByb3RvUmVzcG9uc2USKgoEdHlwZRgBIAEoDjIWLmNvbS54emxsLmdycGMuTXNnVHlwZV'
+    'IEdHlwZRIYCgdwYXlsb2FkGAIgASgMUgdwYXlsb2FkEhIKBGNvZGUYAyABKAVSBGNvZGUSEAoD'
+    'bXNnGAQgASgJUgNtc2c=');
 
 @$core.Deprecated('Use c2CSendReqDescriptor instead')
 const C2CSendReq$json = {
   '1': 'C2CSendReq',
   '2': [
-    {'1': 'clientMsgId', '3': 1, '4': 1, '5': 9, '10': 'clientMsgId'},
-    {'1': 'msgId', '3': 2, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 3, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'to', '3': 4, '4': 1, '5': 9, '10': 'to'},
+    {'1': 'clientMsgId', '3': 1, '4': 1, '5': 12, '10': 'clientMsgId'},
+    {'1': 'msgId', '3': 2, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 3, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'to', '3': 4, '4': 1, '5': 6, '10': 'to'},
     {'1': 'format', '3': 5, '4': 1, '5': 5, '10': 'format'},
     {'1': 'content', '3': 6, '4': 1, '5': 9, '10': 'content'},
-    {'1': 'time', '3': 7, '4': 1, '5': 3, '10': 'time'},
-    {'1': 'chatId', '3': 8, '4': 1, '5': 9, '10': 'chatId'},
+    {'1': 'time', '3': 7, '4': 1, '5': 6, '10': 'time'},
   ],
 };
 
 /// Descriptor for `C2CSendReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List c2CSendReqDescriptor = $convert.base64Decode(
-    'CgpDMkNTZW5kUmVxEiAKC2NsaWVudE1zZ0lkGAEgASgJUgtjbGllbnRNc2dJZBIUCgVtc2dJZB'
-    'gCIAEoCVIFbXNnSWQSEgoEZnJvbRgDIAEoCVIEZnJvbRIOCgJ0bxgEIAEoCVICdG8SFgoGZm9y'
+    'CgpDMkNTZW5kUmVxEiAKC2NsaWVudE1zZ0lkGAEgASgMUgtjbGllbnRNc2dJZBIUCgVtc2dJZB'
+    'gCIAEoBlIFbXNnSWQSEgoEZnJvbRgDIAEoBlIEZnJvbRIOCgJ0bxgEIAEoBlICdG8SFgoGZm9y'
     'bWF0GAUgASgFUgZmb3JtYXQSGAoHY29udGVudBgGIAEoCVIHY29udGVudBISCgR0aW1lGAcgAS'
-    'gDUgR0aW1lEhYKBmNoYXRJZBgIIAEoCVIGY2hhdElk');
+    'gGUgR0aW1l');
 
 @$core.Deprecated('Use c2CAckReqDescriptor instead')
 const C2CAckReq$json = {
   '1': 'C2CAckReq',
   '2': [
-    {'1': 'clientMsgId', '3': 1, '4': 1, '5': 9, '10': 'clientMsgId'},
-    {'1': 'msgId', '3': 2, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 3, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'to', '3': 4, '4': 1, '5': 9, '10': 'to'},
+    {'1': 'clientMsgId', '3': 1, '4': 1, '5': 12, '10': 'clientMsgId'},
+    {'1': 'msgId', '3': 2, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 3, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'to', '3': 4, '4': 1, '5': 6, '10': 'to'},
     {'1': 'status', '3': 5, '4': 1, '5': 5, '10': 'status'},
-    {'1': 'chatId', '3': 6, '4': 1, '5': 9, '10': 'chatId'},
   ],
 };
 
 /// Descriptor for `C2CAckReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List c2CAckReqDescriptor = $convert.base64Decode(
-    'CglDMkNBY2tSZXESIAoLY2xpZW50TXNnSWQYASABKAlSC2NsaWVudE1zZ0lkEhQKBW1zZ0lkGA'
-    'IgASgJUgVtc2dJZBISCgRmcm9tGAMgASgJUgRmcm9tEg4KAnRvGAQgASgJUgJ0bxIWCgZzdGF0'
-    'dXMYBSABKAVSBnN0YXR1cxIWCgZjaGF0SWQYBiABKAlSBmNoYXRJZA==');
+    'CglDMkNBY2tSZXESIAoLY2xpZW50TXNnSWQYASABKAxSC2NsaWVudE1zZ0lkEhQKBW1zZ0lkGA'
+    'IgASgGUgVtc2dJZBISCgRmcm9tGAMgASgGUgRmcm9tEg4KAnRvGAQgASgGUgJ0bxIWCgZzdGF0'
+    'dXMYBSABKAVSBnN0YXR1cw==');
 
 @$core.Deprecated('Use c2CWithdrawReqDescriptor instead')
 const C2CWithdrawReq$json = {
   '1': 'C2CWithdrawReq',
   '2': [
-    {'1': 'msgId', '3': 1, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 2, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'to', '3': 3, '4': 1, '5': 9, '10': 'to'},
-    {'1': 'chatId', '3': 4, '4': 1, '5': 9, '10': 'chatId'},
+    {'1': 'msgId', '3': 1, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 2, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'to', '3': 3, '4': 1, '5': 6, '10': 'to'},
   ],
 };
 
 /// Descriptor for `C2CWithdrawReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List c2CWithdrawReqDescriptor = $convert.base64Decode(
-    'Cg5DMkNXaXRoZHJhd1JlcRIUCgVtc2dJZBgBIAEoCVIFbXNnSWQSEgoEZnJvbRgCIAEoCVIEZn'
-    'JvbRIOCgJ0bxgDIAEoCVICdG8SFgoGY2hhdElkGAQgASgJUgZjaGF0SWQ=');
+    'Cg5DMkNXaXRoZHJhd1JlcRIUCgVtc2dJZBgBIAEoBlIFbXNnSWQSEgoEZnJvbRgCIAEoBlIEZn'
+    'JvbRIOCgJ0bxgDIAEoBlICdG8=');
 
 @$core.Deprecated('Use getBatchMsgIdsReqDescriptor instead')
 const GetBatchMsgIdsReq$json = {
   '1': 'GetBatchMsgIdsReq',
   '2': [
-    {'1': 'userId', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'userId', '3': 1, '4': 1, '5': 6, '10': 'userId'},
   ],
 };
 
 /// Descriptor for `GetBatchMsgIdsReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getBatchMsgIdsReqDescriptor = $convert.base64Decode(
-    'ChFHZXRCYXRjaE1zZ0lkc1JlcRIWCgZ1c2VySWQYASABKAlSBnVzZXJJZA==');
+    'ChFHZXRCYXRjaE1zZ0lkc1JlcRIWCgZ1c2VySWQYASABKAZSBnVzZXJJZA==');
 
 @$core.Deprecated('Use c2CMsgPushDescriptor instead')
 const C2CMsgPush$json = {
   '1': 'C2CMsgPush',
   '2': [
-    {'1': 'clientMsgId', '3': 1, '4': 1, '5': 9, '10': 'clientMsgId'},
-    {'1': 'msgId', '3': 2, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 3, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'to', '3': 4, '4': 1, '5': 9, '10': 'to'},
+    {'1': 'clientMsgId', '3': 1, '4': 1, '5': 12, '10': 'clientMsgId'},
+    {'1': 'msgId', '3': 2, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 3, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'to', '3': 4, '4': 1, '5': 6, '10': 'to'},
     {'1': 'format', '3': 5, '4': 1, '5': 5, '10': 'format'},
     {'1': 'content', '3': 6, '4': 1, '5': 9, '10': 'content'},
-    {'1': 'time', '3': 7, '4': 1, '5': 3, '10': 'time'},
-    {'1': 'chatId', '3': 8, '4': 1, '5': 9, '10': 'chatId'},
+    {'1': 'time', '3': 7, '4': 1, '5': 6, '10': 'time'},
   ],
 };
 
 /// Descriptor for `C2CMsgPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List c2CMsgPushDescriptor = $convert.base64Decode(
-    'CgpDMkNNc2dQdXNoEiAKC2NsaWVudE1zZ0lkGAEgASgJUgtjbGllbnRNc2dJZBIUCgVtc2dJZB'
-    'gCIAEoCVIFbXNnSWQSEgoEZnJvbRgDIAEoCVIEZnJvbRIOCgJ0bxgEIAEoCVICdG8SFgoGZm9y'
+    'CgpDMkNNc2dQdXNoEiAKC2NsaWVudE1zZ0lkGAEgASgMUgtjbGllbnRNc2dJZBIUCgVtc2dJZB'
+    'gCIAEoBlIFbXNnSWQSEgoEZnJvbRgDIAEoBlIEZnJvbRIOCgJ0bxgEIAEoBlICdG8SFgoGZm9y'
     'bWF0GAUgASgFUgZmb3JtYXQSGAoHY29udGVudBgGIAEoCVIHY29udGVudBISCgR0aW1lGAcgAS'
-    'gDUgR0aW1lEhYKBmNoYXRJZBgIIAEoCVIGY2hhdElk');
+    'gGUgR0aW1l');
 
 @$core.Deprecated('Use batchMsgIdsPushDescriptor instead')
 const BatchMsgIdsPush$json = {
   '1': 'BatchMsgIdsPush',
   '2': [
-    {'1': 'msgIds', '3': 1, '4': 3, '5': 9, '10': 'msgIds'},
+    {'1': 'msgIds', '3': 1, '4': 3, '5': 6, '10': 'msgIds'},
   ],
 };
 
 /// Descriptor for `BatchMsgIdsPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List batchMsgIdsPushDescriptor = $convert
-    .base64Decode('Cg9CYXRjaE1zZ0lkc1B1c2gSFgoGbXNnSWRzGAEgAygJUgZtc2dJZHM=');
+    .base64Decode('Cg9CYXRjaE1zZ0lkc1B1c2gSFgoGbXNnSWRzGAEgAygGUgZtc2dJZHM=');
 
 @$core.Deprecated('Use serverAckPushDescriptor instead')
 const ServerAckPush$json = {
   '1': 'ServerAckPush',
   '2': [
-    {'1': 'toUserId', '3': 1, '4': 1, '5': 9, '10': 'toUserId'},
-    {'1': 'clientMsgId', '3': 2, '4': 1, '5': 9, '10': 'clientMsgId'},
-    {'1': 'msgId', '3': 3, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'chatId', '3': 4, '4': 1, '5': 9, '10': 'chatId'},
+    {'1': 'toUserId', '3': 1, '4': 1, '5': 6, '10': 'toUserId'},
+    {'1': 'clientMsgId', '3': 2, '4': 1, '5': 12, '10': 'clientMsgId'},
+    {'1': 'msgId', '3': 3, '4': 1, '5': 6, '10': 'msgId'},
     {
       '1': 'msgReceivedStatus',
       '3': 5,
@@ -205,27 +216,24 @@ const ServerAckPush$json = {
       '5': 5,
       '10': 'msgReceivedStatus'
     },
-    {'1': 'ackTextDesc', '3': 6, '4': 1, '5': 9, '10': 'ackTextDesc'},
-    {'1': 'receiveTime', '3': 7, '4': 1, '5': 3, '10': 'receiveTime'},
+    {'1': 'receiveTime', '3': 7, '4': 1, '5': 6, '10': 'receiveTime'},
   ],
 };
 
 /// Descriptor for `ServerAckPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List serverAckPushDescriptor = $convert.base64Decode(
-    'Cg1TZXJ2ZXJBY2tQdXNoEhoKCHRvVXNlcklkGAEgASgJUgh0b1VzZXJJZBIgCgtjbGllbnRNc2'
-    'dJZBgCIAEoCVILY2xpZW50TXNnSWQSFAoFbXNnSWQYAyABKAlSBW1zZ0lkEhYKBmNoYXRJZBgE'
-    'IAEoCVIGY2hhdElkEiwKEW1zZ1JlY2VpdmVkU3RhdHVzGAUgASgFUhFtc2dSZWNlaXZlZFN0YX'
-    'R1cxIgCgthY2tUZXh0RGVzYxgGIAEoCVILYWNrVGV4dERlc2MSIAoLcmVjZWl2ZVRpbWUYByAB'
-    'KANSC3JlY2VpdmVUaW1l');
+    'Cg1TZXJ2ZXJBY2tQdXNoEhoKCHRvVXNlcklkGAEgASgGUgh0b1VzZXJJZBIgCgtjbGllbnRNc2'
+    'dJZBgCIAEoDFILY2xpZW50TXNnSWQSFAoFbXNnSWQYAyABKAZSBW1zZ0lkEiwKEW1zZ1JlY2Vp'
+    'dmVkU3RhdHVzGAUgASgFUhFtc2dSZWNlaXZlZFN0YXR1cxIgCgtyZWNlaXZlVGltZRgHIAEoBl'
+    'ILcmVjZWl2ZVRpbWU=');
 
 @$core.Deprecated('Use clientAckPushDescriptor instead')
 const ClientAckPush$json = {
   '1': 'ClientAckPush',
   '2': [
-    {'1': 'toUserId', '3': 1, '4': 1, '5': 9, '10': 'toUserId'},
-    {'1': 'clientMsgId', '3': 2, '4': 1, '5': 9, '10': 'clientMsgId'},
-    {'1': 'msgId', '3': 3, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'chatId', '3': 4, '4': 1, '5': 9, '10': 'chatId'},
+    {'1': 'toUserId', '3': 1, '4': 1, '5': 6, '10': 'toUserId'},
+    {'1': 'clientMsgId', '3': 2, '4': 1, '5': 12, '10': 'clientMsgId'},
+    {'1': 'msgId', '3': 3, '4': 1, '5': 6, '10': 'msgId'},
     {
       '1': 'msgReceivedStatus',
       '3': 5,
@@ -233,48 +241,44 @@ const ClientAckPush$json = {
       '5': 5,
       '10': 'msgReceivedStatus'
     },
-    {'1': 'ackTextDesc', '3': 6, '4': 1, '5': 9, '10': 'ackTextDesc'},
-    {'1': 'receiveTime', '3': 7, '4': 1, '5': 3, '10': 'receiveTime'},
+    {'1': 'receiveTime', '3': 7, '4': 1, '5': 6, '10': 'receiveTime'},
   ],
 };
 
 /// Descriptor for `ClientAckPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List clientAckPushDescriptor = $convert.base64Decode(
-    'Cg1DbGllbnRBY2tQdXNoEhoKCHRvVXNlcklkGAEgASgJUgh0b1VzZXJJZBIgCgtjbGllbnRNc2'
-    'dJZBgCIAEoCVILY2xpZW50TXNnSWQSFAoFbXNnSWQYAyABKAlSBW1zZ0lkEhYKBmNoYXRJZBgE'
-    'IAEoCVIGY2hhdElkEiwKEW1zZ1JlY2VpdmVkU3RhdHVzGAUgASgFUhFtc2dSZWNlaXZlZFN0YX'
-    'R1cxIgCgthY2tUZXh0RGVzYxgGIAEoCVILYWNrVGV4dERlc2MSIAoLcmVjZWl2ZVRpbWUYByAB'
-    'KANSC3JlY2VpdmVUaW1l');
+    'Cg1DbGllbnRBY2tQdXNoEhoKCHRvVXNlcklkGAEgASgGUgh0b1VzZXJJZBIgCgtjbGllbnRNc2'
+    'dJZBgCIAEoDFILY2xpZW50TXNnSWQSFAoFbXNnSWQYAyABKAZSBW1zZ0lkEiwKEW1zZ1JlY2Vp'
+    'dmVkU3RhdHVzGAUgASgFUhFtc2dSZWNlaXZlZFN0YXR1cxIgCgtyZWNlaXZlVGltZRgHIAEoBl'
+    'ILcmVjZWl2ZVRpbWU=');
 
 @$core.Deprecated('Use withdrawPushDescriptor instead')
 const WithdrawPush$json = {
   '1': 'WithdrawPush',
   '2': [
-    {'1': 'toUserId', '3': 1, '4': 1, '5': 9, '10': 'toUserId'},
-    {'1': 'msgId', '3': 2, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'chatId', '3': 3, '4': 1, '5': 9, '10': 'chatId'},
-    {'1': 'fromUserId', '3': 4, '4': 1, '5': 9, '10': 'fromUserId'},
+    {'1': 'toUserId', '3': 1, '4': 1, '5': 6, '10': 'toUserId'},
+    {'1': 'msgId', '3': 2, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'fromUserId', '3': 4, '4': 1, '5': 6, '10': 'fromUserId'},
   ],
 };
 
 /// Descriptor for `WithdrawPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List withdrawPushDescriptor = $convert.base64Decode(
-    'CgxXaXRoZHJhd1B1c2gSGgoIdG9Vc2VySWQYASABKAlSCHRvVXNlcklkEhQKBW1zZ0lkGAIgAS'
-    'gJUgVtc2dJZBIWCgZjaGF0SWQYAyABKAlSBmNoYXRJZBIeCgpmcm9tVXNlcklkGAQgASgJUgpm'
-    'cm9tVXNlcklk');
+    'CgxXaXRoZHJhd1B1c2gSGgoIdG9Vc2VySWQYASABKAZSCHRvVXNlcklkEhQKBW1zZ0lkGAIgAS'
+    'gGUgVtc2dJZBIeCgpmcm9tVXNlcklkGAQgASgGUgpmcm9tVXNlcklk');
 
 @$core.Deprecated('Use friendRequestPushDescriptor instead')
 const FriendRequestPush$json = {
   '1': 'FriendRequestPush',
   '2': [
-    {'1': 'toUserId', '3': 1, '4': 1, '5': 9, '10': 'toUserId'},
-    {'1': 'requestId', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
-    {'1': 'fromUserId', '3': 3, '4': 1, '5': 9, '10': 'fromUserId'},
+    {'1': 'toUserId', '3': 1, '4': 1, '5': 6, '10': 'toUserId'},
+    {'1': 'requestId', '3': 2, '4': 1, '5': 12, '10': 'requestId'},
+    {'1': 'fromUserId', '3': 3, '4': 1, '5': 6, '10': 'fromUserId'},
     {'1': 'fromUserName', '3': 4, '4': 1, '5': 9, '10': 'fromUserName'},
     {'1': 'fromUserAvatar', '3': 5, '4': 1, '5': 9, '10': 'fromUserAvatar'},
     {'1': 'requestMessage', '3': 6, '4': 1, '5': 9, '10': 'requestMessage'},
     {'1': 'status', '3': 7, '4': 1, '5': 5, '10': 'status'},
-    {'1': 'createTime', '3': 8, '4': 1, '5': 3, '10': 'createTime'},
+    {'1': 'createTime', '3': 8, '4': 1, '5': 6, '10': 'createTime'},
     {'1': 'pushTitle', '3': 9, '4': 1, '5': 9, '10': 'pushTitle'},
     {'1': 'pushContent', '3': 10, '4': 1, '5': 9, '10': 'pushContent'},
   ],
@@ -282,11 +286,11 @@ const FriendRequestPush$json = {
 
 /// Descriptor for `FriendRequestPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List friendRequestPushDescriptor = $convert.base64Decode(
-    'ChFGcmllbmRSZXF1ZXN0UHVzaBIaCgh0b1VzZXJJZBgBIAEoCVIIdG9Vc2VySWQSHAoJcmVxdW'
-    'VzdElkGAIgASgJUglyZXF1ZXN0SWQSHgoKZnJvbVVzZXJJZBgDIAEoCVIKZnJvbVVzZXJJZBIi'
+    'ChFGcmllbmRSZXF1ZXN0UHVzaBIaCgh0b1VzZXJJZBgBIAEoBlIIdG9Vc2VySWQSHAoJcmVxdW'
+    'VzdElkGAIgASgMUglyZXF1ZXN0SWQSHgoKZnJvbVVzZXJJZBgDIAEoBlIKZnJvbVVzZXJJZBIi'
     'Cgxmcm9tVXNlck5hbWUYBCABKAlSDGZyb21Vc2VyTmFtZRImCg5mcm9tVXNlckF2YXRhchgFIA'
     'EoCVIOZnJvbVVzZXJBdmF0YXISJgoOcmVxdWVzdE1lc3NhZ2UYBiABKAlSDnJlcXVlc3RNZXNz'
-    'YWdlEhYKBnN0YXR1cxgHIAEoBVIGc3RhdHVzEh4KCmNyZWF0ZVRpbWUYCCABKANSCmNyZWF0ZV'
+    'YWdlEhYKBnN0YXR1cxgHIAEoBVIGc3RhdHVzEh4KCmNyZWF0ZVRpbWUYCCABKAZSCmNyZWF0ZV'
     'RpbWUSHAoJcHVzaFRpdGxlGAkgASgJUglwdXNoVGl0bGUSIAoLcHVzaENvbnRlbnQYCiABKAlS'
     'C3B1c2hDb250ZW50');
 
@@ -294,13 +298,13 @@ final $typed_data.Uint8List friendRequestPushDescriptor = $convert.base64Decode(
 const FriendResponsePush$json = {
   '1': 'FriendResponsePush',
   '2': [
-    {'1': 'toUserId', '3': 1, '4': 1, '5': 9, '10': 'toUserId'},
-    {'1': 'requestId', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
-    {'1': 'fromUserId', '3': 3, '4': 1, '5': 9, '10': 'fromUserId'},
+    {'1': 'toUserId', '3': 1, '4': 1, '5': 6, '10': 'toUserId'},
+    {'1': 'requestId', '3': 2, '4': 1, '5': 12, '10': 'requestId'},
+    {'1': 'fromUserId', '3': 3, '4': 1, '5': 6, '10': 'fromUserId'},
     {'1': 'fromUserName', '3': 4, '4': 1, '5': 9, '10': 'fromUserName'},
     {'1': 'fromUserAvatar', '3': 5, '4': 1, '5': 9, '10': 'fromUserAvatar'},
     {'1': 'status', '3': 6, '4': 1, '5': 5, '10': 'status'},
-    {'1': 'responseTime', '3': 7, '4': 1, '5': 3, '10': 'responseTime'},
+    {'1': 'responseTime', '3': 7, '4': 1, '5': 6, '10': 'responseTime'},
     {'1': 'pushTitle', '3': 8, '4': 1, '5': 9, '10': 'pushTitle'},
     {'1': 'pushContent', '3': 9, '4': 1, '5': 9, '10': 'pushContent'},
   ],
@@ -308,107 +312,175 @@ const FriendResponsePush$json = {
 
 /// Descriptor for `FriendResponsePush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List friendResponsePushDescriptor = $convert.base64Decode(
-    'ChJGcmllbmRSZXNwb25zZVB1c2gSGgoIdG9Vc2VySWQYASABKAlSCHRvVXNlcklkEhwKCXJlcX'
-    'Vlc3RJZBgCIAEoCVIJcmVxdWVzdElkEh4KCmZyb21Vc2VySWQYAyABKAlSCmZyb21Vc2VySWQS'
+    'ChJGcmllbmRSZXNwb25zZVB1c2gSGgoIdG9Vc2VySWQYASABKAZSCHRvVXNlcklkEhwKCXJlcX'
+    'Vlc3RJZBgCIAEoDFIJcmVxdWVzdElkEh4KCmZyb21Vc2VySWQYAyABKAZSCmZyb21Vc2VySWQS'
     'IgoMZnJvbVVzZXJOYW1lGAQgASgJUgxmcm9tVXNlck5hbWUSJgoOZnJvbVVzZXJBdmF0YXIYBS'
     'ABKAlSDmZyb21Vc2VyQXZhdGFyEhYKBnN0YXR1cxgGIAEoBVIGc3RhdHVzEiIKDHJlc3BvbnNl'
-    'VGltZRgHIAEoA1IMcmVzcG9uc2VUaW1lEhwKCXB1c2hUaXRsZRgIIAEoCVIJcHVzaFRpdGxlEi'
+    'VGltZRgHIAEoBlIMcmVzcG9uc2VUaW1lEhwKCXB1c2hUaXRsZRgIIAEoCVIJcHVzaFRpdGxlEi'
     'AKC3B1c2hDb250ZW50GAkgASgJUgtwdXNoQ29udGVudA==');
 
 @$core.Deprecated('Use groupSendReqDescriptor instead')
 const GroupSendReq$json = {
   '1': 'GroupSendReq',
   '2': [
-    {'1': 'msgId', '3': 1, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 2, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'groupId', '3': 3, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'msgId', '3': 1, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 2, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'groupId', '3': 3, '4': 1, '5': 6, '10': 'groupId'},
     {'1': 'format', '3': 4, '4': 1, '5': 5, '10': 'format'},
     {'1': 'content', '3': 5, '4': 1, '5': 9, '10': 'content'},
-    {'1': 'time', '3': 6, '4': 1, '5': 3, '10': 'time'},
+    {'1': 'time', '3': 6, '4': 1, '5': 6, '10': 'time'},
   ],
 };
 
 /// Descriptor for `GroupSendReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List groupSendReqDescriptor = $convert.base64Decode(
-    'CgxHcm91cFNlbmRSZXESFAoFbXNnSWQYASABKAlSBW1zZ0lkEhIKBGZyb20YAiABKAlSBGZyb2'
-    '0SGAoHZ3JvdXBJZBgDIAEoCVIHZ3JvdXBJZBIWCgZmb3JtYXQYBCABKAVSBmZvcm1hdBIYCgdj'
-    'b250ZW50GAUgASgJUgdjb250ZW50EhIKBHRpbWUYBiABKANSBHRpbWU=');
+    'CgxHcm91cFNlbmRSZXESFAoFbXNnSWQYASABKAZSBW1zZ0lkEhIKBGZyb20YAiABKAZSBGZyb2'
+    '0SGAoHZ3JvdXBJZBgDIAEoBlIHZ3JvdXBJZBIWCgZmb3JtYXQYBCABKAVSBmZvcm1hdBIYCgdj'
+    'b250ZW50GAUgASgJUgdjb250ZW50EhIKBHRpbWUYBiABKAZSBHRpbWU=');
 
 @$core.Deprecated('Use groupMsgPushDescriptor instead')
 const GroupMsgPush$json = {
   '1': 'GroupMsgPush',
   '2': [
-    {'1': 'msgId', '3': 1, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 2, '4': 1, '5': 9, '10': 'from'},
+    {'1': 'msgId', '3': 1, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 2, '4': 1, '5': 6, '10': 'from'},
     {'1': 'fromNickname', '3': 3, '4': 1, '5': 9, '10': 'fromNickname'},
     {'1': 'fromAvatar', '3': 4, '4': 1, '5': 9, '10': 'fromAvatar'},
-    {'1': 'groupId', '3': 5, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'groupId', '3': 5, '4': 1, '5': 6, '10': 'groupId'},
     {'1': 'groupName', '3': 6, '4': 1, '5': 9, '10': 'groupName'},
     {'1': 'format', '3': 7, '4': 1, '5': 5, '10': 'format'},
     {'1': 'content', '3': 8, '4': 1, '5': 9, '10': 'content'},
-    {'1': 'time', '3': 9, '4': 1, '5': 3, '10': 'time'},
+    {'1': 'time', '3': 9, '4': 1, '5': 6, '10': 'time'},
     {'1': 'memberCount', '3': 10, '4': 1, '5': 5, '10': 'memberCount'},
   ],
 };
 
 /// Descriptor for `GroupMsgPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List groupMsgPushDescriptor = $convert.base64Decode(
-    'CgxHcm91cE1zZ1B1c2gSFAoFbXNnSWQYASABKAlSBW1zZ0lkEhIKBGZyb20YAiABKAlSBGZyb2'
+    'CgxHcm91cE1zZ1B1c2gSFAoFbXNnSWQYASABKAZSBW1zZ0lkEhIKBGZyb20YAiABKAZSBGZyb2'
     '0SIgoMZnJvbU5pY2tuYW1lGAMgASgJUgxmcm9tTmlja25hbWUSHgoKZnJvbUF2YXRhchgEIAEo'
-    'CVIKZnJvbUF2YXRhchIYCgdncm91cElkGAUgASgJUgdncm91cElkEhwKCWdyb3VwTmFtZRgGIA'
+    'CVIKZnJvbUF2YXRhchIYCgdncm91cElkGAUgASgGUgdncm91cElkEhwKCWdyb3VwTmFtZRgGIA'
     'EoCVIJZ3JvdXBOYW1lEhYKBmZvcm1hdBgHIAEoBVIGZm9ybWF0EhgKB2NvbnRlbnQYCCABKAlS'
-    'B2NvbnRlbnQSEgoEdGltZRgJIAEoA1IEdGltZRIgCgttZW1iZXJDb3VudBgKIAEoBVILbWVtYm'
+    'B2NvbnRlbnQSEgoEdGltZRgJIAEoBlIEdGltZRIgCgttZW1iZXJDb3VudBgKIAEoBVILbWVtYm'
     'VyQ291bnQ=');
 
 @$core.Deprecated('Use groupAckReqDescriptor instead')
 const GroupAckReq$json = {
   '1': 'GroupAckReq',
   '2': [
-    {'1': 'msgId', '3': 1, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'userId', '3': 2, '4': 1, '5': 9, '10': 'userId'},
-    {'1': 'groupId', '3': 3, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'msgId', '3': 1, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'userId', '3': 2, '4': 1, '5': 6, '10': 'userId'},
+    {'1': 'groupId', '3': 3, '4': 1, '5': 6, '10': 'groupId'},
     {'1': 'status', '3': 4, '4': 1, '5': 5, '10': 'status'},
   ],
 };
 
 /// Descriptor for `GroupAckReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List groupAckReqDescriptor = $convert.base64Decode(
-    'CgtHcm91cEFja1JlcRIUCgVtc2dJZBgBIAEoCVIFbXNnSWQSFgoGdXNlcklkGAIgASgJUgZ1c2'
-    'VySWQSGAoHZ3JvdXBJZBgDIAEoCVIHZ3JvdXBJZBIWCgZzdGF0dXMYBCABKAVSBnN0YXR1cw==');
+    'CgtHcm91cEFja1JlcRIUCgVtc2dJZBgBIAEoBlIFbXNnSWQSFgoGdXNlcklkGAIgASgGUgZ1c2'
+    'VySWQSGAoHZ3JvdXBJZBgDIAEoBlIHZ3JvdXBJZBIWCgZzdGF0dXMYBCABKAVSBnN0YXR1cw==');
 
 @$core.Deprecated('Use groupWithdrawReqDescriptor instead')
 const GroupWithdrawReq$json = {
   '1': 'GroupWithdrawReq',
   '2': [
-    {'1': 'msgId', '3': 1, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 2, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'groupId', '3': 3, '4': 1, '5': 9, '10': 'groupId'},
-    {'1': 'withdrawTime', '3': 4, '4': 1, '5': 3, '10': 'withdrawTime'},
+    {'1': 'msgId', '3': 1, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 2, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'groupId', '3': 3, '4': 1, '5': 6, '10': 'groupId'},
+    {'1': 'withdrawTime', '3': 4, '4': 1, '5': 6, '10': 'withdrawTime'},
   ],
 };
 
 /// Descriptor for `GroupWithdrawReq`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List groupWithdrawReqDescriptor = $convert.base64Decode(
-    'ChBHcm91cFdpdGhkcmF3UmVxEhQKBW1zZ0lkGAEgASgJUgVtc2dJZBISCgRmcm9tGAIgASgJUg'
-    'Rmcm9tEhgKB2dyb3VwSWQYAyABKAlSB2dyb3VwSWQSIgoMd2l0aGRyYXdUaW1lGAQgASgDUgx3'
+    'ChBHcm91cFdpdGhkcmF3UmVxEhQKBW1zZ0lkGAEgASgGUgVtc2dJZBISCgRmcm9tGAIgASgGUg'
+    'Rmcm9tEhgKB2dyb3VwSWQYAyABKAZSB2dyb3VwSWQSIgoMd2l0aGRyYXdUaW1lGAQgASgGUgx3'
     'aXRoZHJhd1RpbWU=');
 
 @$core.Deprecated('Use groupWithdrawPushDescriptor instead')
 const GroupWithdrawPush$json = {
   '1': 'GroupWithdrawPush',
   '2': [
-    {'1': 'msgId', '3': 1, '4': 1, '5': 9, '10': 'msgId'},
-    {'1': 'from', '3': 2, '4': 1, '5': 9, '10': 'from'},
-    {'1': 'groupId', '3': 3, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'msgId', '3': 1, '4': 1, '5': 6, '10': 'msgId'},
+    {'1': 'from', '3': 2, '4': 1, '5': 6, '10': 'from'},
+    {'1': 'groupId', '3': 3, '4': 1, '5': 6, '10': 'groupId'},
     {'1': 'operatorNickname', '3': 4, '4': 1, '5': 9, '10': 'operatorNickname'},
-    {'1': 'withdrawTime', '3': 5, '4': 1, '5': 3, '10': 'withdrawTime'},
+    {'1': 'withdrawTime', '3': 5, '4': 1, '5': 6, '10': 'withdrawTime'},
     {'1': 'isAdmin', '3': 6, '4': 1, '5': 8, '10': 'isAdmin'},
   ],
 };
 
 /// Descriptor for `GroupWithdrawPush`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List groupWithdrawPushDescriptor = $convert.base64Decode(
-    'ChFHcm91cFdpdGhkcmF3UHVzaBIUCgVtc2dJZBgBIAEoCVIFbXNnSWQSEgoEZnJvbRgCIAEoCV'
-    'IEZnJvbRIYCgdncm91cElkGAMgASgJUgdncm91cElkEioKEG9wZXJhdG9yTmlja25hbWUYBCAB'
-    'KAlSEG9wZXJhdG9yTmlja25hbWUSIgoMd2l0aGRyYXdUaW1lGAUgASgDUgx3aXRoZHJhd1RpbW'
+    'ChFHcm91cFdpdGhkcmF3UHVzaBIUCgVtc2dJZBgBIAEoBlIFbXNnSWQSEgoEZnJvbRgCIAEoBl'
+    'IEZnJvbRIYCgdncm91cElkGAMgASgGUgdncm91cElkEioKEG9wZXJhdG9yTmlja25hbWUYBCAB'
+    'KAlSEG9wZXJhdG9yTmlja25hbWUSIgoMd2l0aGRyYXdUaW1lGAUgASgGUgx3aXRoZHJhd1RpbW'
     'USGAoHaXNBZG1pbhgGIAEoCFIHaXNBZG1pbg==');
+
+const $core.Map<$core.String, $core.dynamic> MessageServiceBase$json = {
+  '1': 'MessageService',
+  '2': [
+    {
+      '1': 'ResponseServerAck2Client',
+      '2': '.com.xzll.grpc.ServerAckPush',
+      '3': '.com.xzll.grpc.WebBaseResponse',
+      '4': {}
+    },
+    {
+      '1': 'ResponseClientAck2Client',
+      '2': '.com.xzll.grpc.ClientAckPush',
+      '3': '.com.xzll.grpc.WebBaseResponse',
+      '4': {}
+    },
+    {
+      '1': 'SendWithdrawMsg2Client',
+      '2': '.com.xzll.grpc.WithdrawPush',
+      '3': '.com.xzll.grpc.WebBaseResponse',
+      '4': {}
+    },
+    {
+      '1': 'PushFriendRequest2Client',
+      '2': '.com.xzll.grpc.FriendRequestPush',
+      '3': '.com.xzll.grpc.WebBaseResponse',
+      '4': {}
+    },
+    {
+      '1': 'PushFriendResponse2Client',
+      '2': '.com.xzll.grpc.FriendResponsePush',
+      '3': '.com.xzll.grpc.WebBaseResponse',
+      '4': {}
+    },
+    {
+      '1': 'TransferC2CMsg',
+      '2': '.com.xzll.grpc.ImProtoRequest',
+      '3': '.com.xzll.grpc.WebBaseResponse',
+      '4': {}
+    },
+  ],
+};
+
+@$core.Deprecated('Use messageServiceDescriptor instead')
+const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
+    MessageServiceBase$messageJson = {
+  '.com.xzll.grpc.ServerAckPush': ServerAckPush$json,
+  '.com.xzll.grpc.WebBaseResponse': WebBaseResponse$json,
+  '.com.xzll.grpc.ClientAckPush': ClientAckPush$json,
+  '.com.xzll.grpc.WithdrawPush': WithdrawPush$json,
+  '.com.xzll.grpc.FriendRequestPush': FriendRequestPush$json,
+  '.com.xzll.grpc.FriendResponsePush': FriendResponsePush$json,
+  '.com.xzll.grpc.ImProtoRequest': ImProtoRequest$json,
+};
+
+/// Descriptor for `MessageService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
+final $typed_data.Uint8List messageServiceDescriptor = $convert.base64Decode(
+    'Cg5NZXNzYWdlU2VydmljZRJaChhSZXNwb25zZVNlcnZlckFjazJDbGllbnQSHC5jb20ueHpsbC'
+    '5ncnBjLlNlcnZlckFja1B1c2gaHi5jb20ueHpsbC5ncnBjLldlYkJhc2VSZXNwb25zZSIAEloK'
+    'GFJlc3BvbnNlQ2xpZW50QWNrMkNsaWVudBIcLmNvbS54emxsLmdycGMuQ2xpZW50QWNrUHVzaB'
+    'oeLmNvbS54emxsLmdycGMuV2ViQmFzZVJlc3BvbnNlIgASVwoWU2VuZFdpdGhkcmF3TXNnMkNs'
+    'aWVudBIbLmNvbS54emxsLmdycGMuV2l0aGRyYXdQdXNoGh4uY29tLnh6bGwuZ3JwYy5XZWJCYX'
+    'NlUmVzcG9uc2UiABJeChhQdXNoRnJpZW5kUmVxdWVzdDJDbGllbnQSIC5jb20ueHpsbC5ncnBj'
+    'LkZyaWVuZFJlcXVlc3RQdXNoGh4uY29tLnh6bGwuZ3JwYy5XZWJCYXNlUmVzcG9uc2UiABJgCh'
+    'lQdXNoRnJpZW5kUmVzcG9uc2UyQ2xpZW50EiEuY29tLnh6bGwuZ3JwYy5GcmllbmRSZXNwb25z'
+    'ZVB1c2gaHi5jb20ueHpsbC5ncnBjLldlYkJhc2VSZXNwb25zZSIAElEKDlRyYW5zZmVyQzJDTX'
+    'NnEh0uY29tLnh6bGwuZ3JwYy5JbVByb3RvUmVxdWVzdBoeLmNvbS54emxsLmdycGMuV2ViQmFz'
+    'ZVJlc3BvbnNlIgA=');

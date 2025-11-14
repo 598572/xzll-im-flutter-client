@@ -54,7 +54,7 @@ class LoginView extends GetView<LoginController> {
           ),
           const SizedBox(height: 16),
           const Text(
-            '蝎聊',
+            'OkIM',
             style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.purple),
           ),
           const SizedBox(height: 8),
