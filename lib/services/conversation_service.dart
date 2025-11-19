@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:xzll_im_flutter_client/constant/app_config.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+import 'package:xzll_im_flutter_client/services/http_service.dart';
 
 // 会话列表请求模型
 class ConversationListRequest {
@@ -85,6 +85,7 @@ class ConversationService {
   static const String _conversationPath = '/im-business/api/chat/lastChatList';
   
   AppData get _appData => Get.find<AppData>();
+  final HttpService _httpService = HttpService();
 
   /// 获取会话列表
   Future<ApiResponse<List<Conversation>>> getConversationList({
@@ -102,9 +103,8 @@ class ConversationService {
       info('📤 获取会话列表请求: ${jsonEncode(request.toJson())}');
       info('🔗 请求URL: $url');
 
-      final response = await http.post(
+      final response = await _httpService.post(
         url,
-        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 

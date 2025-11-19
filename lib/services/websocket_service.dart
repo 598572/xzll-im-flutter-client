@@ -613,13 +613,21 @@ class WebSocketService extends GetxService {
     // 对方是发送人（因为是收到的消息）
     String targetUserId = message.fromUserId;
     
+    // ✅ 根据会话是否打开来决定未读数
+    String messageChatId = message.chatId;
+    String currentOpenChatId = AppEvent.currentOpenChatId.value;
+    bool isChatOpen = messageChatId == currentOpenChatId && currentOpenChatId.isNotEmpty;
+    int unreadCount = isChatOpen ? 0 : 1; // 会话打开则未读数为0，否则为1
+    
+    info("📋 会话更新 - chatId: $messageChatId, 当前打开: $currentOpenChatId, 未读数: $unreadCount");
+    
     Conversation updatedConversation = Conversation(
       name: targetUserId,
       headImage: 'assets/other_headImage.png',
       lastMessage: formatLastMessage(message),
       timestamp: formatMessageTimestamp(message.timestamp),
       userId: currentUserId,
-      unreadCount: 1,
+      unreadCount: unreadCount, // ✅ 根据会话状态设置未读数
       targetUserId: targetUserId,
       targetUserName: targetUserId,
       targetUserAvatar: 'assets/other_headImage.png',

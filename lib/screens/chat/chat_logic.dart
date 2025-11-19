@@ -9,6 +9,7 @@ import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/models/domain/message_status_changed_model.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
+import 'package:xzll_im_flutter_client/screens/conversation/conversation_logic.dart';
 import 'package:xzll_im_flutter_client/services/websocket_service.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/services/chat_history_service.dart';
@@ -60,6 +61,14 @@ class ChatLogic extends GetxController {
       final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
       AppEvent.currentOpenChatId.add(chatId);
       info("🔓 设置当前打开会话: $chatId");
+      
+      // ✅ 清零该会话的未读数
+      try {
+        final conversationLogic = Get.find<ConversationLogic>();
+        conversationLogic.clearUnreadCount(chatId);
+      } catch (e) {
+        info("⚠️ 无法清零未读数，ConversationLogic未找到: $e");
+      }
     }
     
     // ✅ 优化：不在聊天界面重复初始化WebSocket
