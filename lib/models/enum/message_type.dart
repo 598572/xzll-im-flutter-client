@@ -2,13 +2,10 @@ import 'package:json_annotation/json_annotation.dart';
 
 @JsonEnum(valueField: "code")
 enum MessageType {
-  unknown(6, "未知消息"),
-  text(0, "[文本]"),
-  image(1, "[图片]"),
-  voice(2, "[语音]"),
-  video(3, "[视频]"),
-  file(4, "[文件]"),
-  location(5, "[位置]");
+  unknown(0, "未知消息"),
+  text(1, "[文本]"),        // TEXT_MSG
+  voice(2, "[语音]"),       // VOICE_MSG
+  location(3, "[位置]");    // LOCATION_MSG
 
   final int code;
   final String desc;

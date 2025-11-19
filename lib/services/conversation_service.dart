@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:xzll_im_flutter_client/constant/app_config.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+import 'package:xzll_im_flutter_client/services/http_service.dart';
 
 // 会话列表请求模型
 class ConversationListRequest {
@@ -85,6 +85,7 @@ class ConversationService {
   static const String _conversationPath = '/im-business/api/chat/lastChatList';
   
   AppData get _appData => Get.find<AppData>();
+  final HttpService _httpService = HttpService();
 
   /// 获取会话列表
   Future<ApiResponse<List<Conversation>>> getConversationList({
@@ -102,17 +103,31 @@ class ConversationService {
       info('📤 获取会话列表请求: ${jsonEncode(request.toJson())}');
       info('🔗 请求URL: $url');
 
-      final response = await http.post(
+      final response = await _httpService.post(
         url,
-        headers: _appData.getAuthHeaders(),
         body: jsonEncode(request.toJson()),
       );
 
       info('📥 会话列表响应状态: ${response.statusCode}');
+      info('📥 会话列表响应头: ${response.headers}');
+      info('📥 会话列表响应内容长度: ${response.body.length}');
       info('📥 会话列表响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
+        // 检查响应体是否为空
+        if (response.body.isEmpty) {
+          return ApiResponse.error('服务器返回空响应');
+        }
+        
+        // 尝试解析JSON，捕获详细错误
+        late final Map<String, dynamic> jsonData;
+        try {
+          jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          info('❌ JSON解析失败: $e');
+          info('❌ 响应体前100个字符: ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}');
+          return ApiResponse.error('服务器返回数据格式错误: $e');
+        }
         
         if (jsonData['code'] == 1) {
           final data = jsonData['data'];
@@ -196,14 +211,12 @@ class ConversationService {
   /// 将整数转换为 MessageType
   MessageType _convertToMessageType(int format) {
     switch (format) {
-      case 0:
+      case 1: // TEXT_MSG
         return MessageType.text;
-      case 1:
-        return MessageType.image;
-      case 2:
+      case 2: // VOICE_MSG
         return MessageType.voice;
-      case 3:
-        return MessageType.video;
+      case 3: // LOCATION_MSG
+        return MessageType.location;
       default:
         return MessageType.text;
     }
@@ -226,24 +239,17 @@ class ConversationService {
   }
 
   /// 格式化最后消息内容
+  /// 根据后端 MsgFormatEnum: 1=文本消息, 2=语音消息, 3=位置消息
   String _formatLastMessage(String content, int format) {
-    if (content.isEmpty) return '';
-    
     switch (format) {
-      case 0: // 文本消息
-        return content;
-      case 1: // 图片消息
-        return '[图片]';
-      case 2: // 语音消息
-        return '[语音]';
-      case 3: // 视频消息
-        return '[视频]';
-      case 4: // 文件消息
-        return '[文件]';
-      case 5: // 位置消息
-        return '[位置]';
+      case 1: // TEXT_MSG - 文本消息
+        return content.isEmpty ? '暂无消息' : content;
+      case 2: // VOICE_MSG - 语音消息
+        return content.isEmpty ? '[语音]' : '[语音] $content';
+      case 3: // LOCATION_MSG - 位置消息
+        return content.isEmpty ? '[位置]' : '[位置] $content';
       default:
-        return content;
+        return content.isEmpty ? '暂无消息' : content;
     }
   }
 

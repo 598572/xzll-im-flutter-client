@@ -43,11 +43,8 @@ Map<String, dynamic> _$ConversationToJson(Conversation instance) =>
     };
 
 const _$MessageTypeEnumMap = {
-  MessageType.unknown: 6,
-  MessageType.text: 0,
-  MessageType.image: 1,
+  MessageType.unknown: 0,
+  MessageType.text: 1,
   MessageType.voice: 2,
-  MessageType.video: 3,
-  MessageType.file: 4,
-  MessageType.location: 5,
+  MessageType.location: 3,
 };

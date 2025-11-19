@@ -40,10 +40,27 @@ class SplashLogic extends GetxController {
     final AuthRepository repo = Get.find<AuthRepository>();
     final cacheAuthData = await AuthTools.loadAuthState();
     if (cacheAuthData.accessToken != null && cacheAuthData.refreshToken != null) {
+      info('📋 检查本地缓存的认证信息');
+      
       var validateToken = await repo.validateToken(cacheAuthData.accessToken!);
       if (validateToken.success) {
+        info('✅ token仍然有效，直接使用并刷新');
+        // token仍然有效，使用当前token并尝试刷新获取新的
+        _appData.setAuthState(
+          accessToken: cacheAuthData.accessToken,
+          refreshToken: cacheAuthData.refreshToken,
+          user: AuthTools.parseUserFromToken(cacheAuthData.accessToken ?? ""),
+        );
+        
+        // 可选：异步刷新token获取新的，但不影响当前登录状态
+        _tryRefreshTokenInBackground(repo, cacheAuthData.refreshToken!);
+        Get.offAllNamed(RouterName.home);
+      } else {
+        info('⚠️ token已过期，尝试使用refreshToken自动刷新');
+        // token过期，使用refreshToken刷新
         var refreshResponse = await repo.refreshToken(cacheAuthData.refreshToken!);
         if (refreshResponse.success) {
+          info('✅ token刷新成功，自动登录');
           _appData.setAuthState(
             accessToken: refreshResponse.data?.token,
             refreshToken: refreshResponse.data?.refreshToken,
@@ -51,18 +68,34 @@ class SplashLogic extends GetxController {
           );
           Get.offAllNamed(RouterName.home);
         } else {
-          error("refreshResponse，login");
+          error("❌ refreshToken也已过期，需要重新登录");
+          await AuthTools.clearAuthState();
           Get.offAllNamed(RouterName.login);
         }
-      } else {
-        error("校验token失败，login");
-        Get.offAllNamed(RouterName.login);
       }
     } else {
-      error('没有认证缓存，跳转到登录界面');
-      // await AuthTools.clearAuthState();
+      error('❌ 没有认证缓存，跳转到登录界面');
+      await AuthTools.clearAuthState();
       Get.offAllNamed(RouterName.login);
     }
-
+  }
+  
+  /// 后台异步刷新token（不影响当前登录状态）
+  Future<void> _tryRefreshTokenInBackground(AuthRepository repo, String refreshToken) async {
+    try {
+      var refreshResponse = await repo.refreshToken(refreshToken);
+      if (refreshResponse.success) {
+        info('🔄 后台刷新token成功，更新缓存');
+        _appData.setAuthState(
+          accessToken: refreshResponse.data?.token,
+          refreshToken: refreshResponse.data?.refreshToken,
+          user: AuthTools.parseUserFromToken(refreshResponse.data?.token ?? ""),
+        );
+      } else {
+        info('⚠️ 后台刷新token失败，但不影响当前登录状态');
+      }
+    } catch (e) {
+      info('⚠️ 后台刷新token异常: $e');
+    }
   }
 }
