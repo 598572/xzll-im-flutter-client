@@ -15,8 +15,6 @@ class HomeLogic extends GetxService {
   final WebSocketService webSocketService = Get.find<WebSocketService>();
   final DataBaseService dataBaseService = Get.find<DataBaseService>();
 
-  final PageController pageController = PageController();
-
   final RxInt currentIndex = 0.obs;
   
   /// 事件流订阅
@@ -44,12 +42,11 @@ class HomeLogic extends GetxService {
   }
 
   void changePage(int index) {
-    currentIndex.value = index;
-    pageController.jumpToPage(index);
-  }
-
-  void onPageChanged(int index) {
-    currentIndex.value = index;
+    // ✅ 禁用重复点击，避免不必要的状态更新
+    if (index != currentIndex.value) {
+      currentIndex.value = index;
+      // ✅ 不再需要pageController，IndexedStack会自动切换
+    }
   }
 
   Future<void> init() async {
@@ -83,7 +80,6 @@ class HomeLogic extends GetxService {
         onPressed: () {
           // 跳转到通讯录页面
           currentIndex.value = 1; // 切换到通讯录页面
-          pageController.jumpToPage(1);
           
           // 延迟一下再跳转到好友申请页面
           Future.delayed(const Duration(milliseconds: 300), () {
@@ -101,7 +97,6 @@ class HomeLogic extends GetxService {
   void onClose() {
     // 清理订阅
     _friendRequestSubscription?.cancel();
-    pageController.dispose();
     super.onClose();
   }
 }
