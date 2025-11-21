@@ -5,6 +5,7 @@ import 'package:xzll_im_flutter_client/constant/constant.dart';
 import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
+import 'package:xzll_im_flutter_client/models/user_info.dart';
 
 class DataBaseService extends GetxService {
   Database? _database;
@@ -14,7 +15,7 @@ class DataBaseService extends GetxService {
     try {
       String databasesPath = await getDatabasesPath();
       String path = join(databasesPath, 'xzll_$userId.db');
-      _database = await openDatabase(path, version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
+      _database = await openDatabase(path, version: 5, onCreate: _onCreate, onUpgrade: _onUpgrade);
       info("初始化数据库成功");
     } catch (e) {
       error("初始化本地数据库失败：${e.toString()}");
@@ -27,6 +28,23 @@ class DataBaseService extends GetxService {
       CREATE TABLE IF NOT EXISTS msg_ids (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         msg_id TEXT UNIQUE
+      )
+    ''');
+
+    // ✅ 创建用户信息表
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_info (
+        user_id TEXT PRIMARY KEY,
+        user_name TEXT NOT NULL,
+        user_full_name TEXT,
+        phone TEXT,
+        email TEXT,
+        head_image TEXT,
+        sex INTEGER,
+        register_time TEXT,
+        last_login_time TEXT,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
       )
     ''');
 
@@ -98,6 +116,11 @@ class DataBaseService extends GetxService {
     if (oldVersion < 4) {
       // 版本3到版本4：添加双轨制ID支持
       await _upgradeToV4(db);
+    }
+    
+    if (oldVersion < 5) {
+      // 版本4到版本5：添加用户信息表
+      await _upgradeToV5(db);
     }
   }
   
@@ -600,6 +623,134 @@ class DataBaseService extends GetxService {
       debug("消息已删除: $messageId");
     } else {
       debug("未找到要删除的消息: $messageId");
+    }
+  }
+
+  /// 升级到版本5：添加用户信息表
+  Future<void> _upgradeToV5(Database db) async {
+    try {
+      info("升级数据库到版本5：添加用户信息表");
+      
+      // 创建用户信息表
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS user_info (
+          user_id TEXT PRIMARY KEY,
+          user_name TEXT NOT NULL,
+          user_full_name TEXT,
+          phone TEXT,
+          email TEXT,
+          head_image TEXT,
+          sex INTEGER,
+          register_time TEXT,
+          last_login_time TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+      ''');
+      
+      info("✅ 用户信息表创建成功");
+    } catch (e) {
+      error("❌ 升级到版本5失败: $e");
+    }
+  }
+
+  // ==================== 用户信息相关操作 ====================
+
+  /// 保存或更新用户信息到本地数据库
+  Future<bool> saveUserInfo(UserInfo userInfo) async {
+    if (_database == null) {
+      error("❌ 数据库未初始化");
+      return false;
+    }
+
+    try {
+      info('📋 保存用户信息到本地数据库: ${userInfo.userId}');
+      
+      final Map<String, dynamic> data = {
+        'user_id': userInfo.userId,
+        'user_name': userInfo.userName,
+        'user_full_name': userInfo.userFullName,
+        'phone': userInfo.phone,
+        'email': userInfo.email,
+        'head_image': userInfo.headImage,
+        'sex': userInfo.sex,
+        'register_time': userInfo.registerTime,
+        'last_login_time': userInfo.lastLoginTime,
+        'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      };
+
+      // 使用 INSERT OR REPLACE 实现保存或更新
+      await _database!.insert(
+        'user_info',
+        data,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      info('✅ 用户信息保存成功');
+      return true;
+    } catch (e) {
+      error('❌ 保存用户信息失败: $e');
+      return false;
+    }
+  }
+
+  /// 从本地数据库获取用户信息
+  Future<UserInfo?> getUserInfo(String userId) async {
+    if (_database == null) {
+      error("❌ 数据库未初始化");
+      return null;
+    }
+
+    try {
+      info('📋 从本地数据库获取用户信息: $userId');
+      
+      final List<Map<String, dynamic>> results = await _database!.query(
+        'user_info',
+        where: 'user_id = ?',
+        whereArgs: [userId],
+        limit: 1,
+      );
+
+      if (results.isNotEmpty) {
+        final userInfo = UserInfo.fromDb(results.first);
+        info('✅ 用户信息获取成功: ${userInfo.userName}');
+        return userInfo;
+      } else {
+        info('⚠️ 本地数据库中未找到用户信息: $userId');
+        return null;
+      }
+    } catch (e) {
+      error('❌ 获取用户信息失败: $e');
+      return null;
+    }
+  }
+
+  /// 删除用户信息
+  Future<bool> deleteUserInfo(String userId) async {
+    if (_database == null) {
+      error("❌ 数据库未初始化");
+      return false;
+    }
+
+    try {
+      info('📋 删除用户信息: $userId');
+      
+      final count = await _database!.delete(
+        'user_info',
+        where: 'user_id = ?',
+        whereArgs: [userId],
+      );
+
+      if (count > 0) {
+        info('✅ 用户信息删除成功');
+        return true;
+      } else {
+        info('⚠️ 未找到要删除的用户信息');
+        return false;
+      }
+    } catch (e) {
+      error('❌ 删除用户信息失败: $e');
+      return false;
     }
   }
 }

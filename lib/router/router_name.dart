@@ -19,4 +19,7 @@ sealed class RouterName {
 
   ///好友申请页面
   static const String friendRequest = '/friendRequest';
+
+  ///个人资料页面
+  static const String profile = '/profile';
 }
