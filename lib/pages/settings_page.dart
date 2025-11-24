@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../pages/profile_page.dart';
+import 'package:get/get.dart';
+import 'profile_page.dart';
+import '../constant/app_data.dart';
+import '../services/auth_service.dart';
 
 /// 设置页面
 class SettingsPage extends StatelessWidget {
@@ -157,6 +160,7 @@ class SettingsPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('退出登录'),
         content: Text('确定要退出登录吗？'),
         actions: [
@@ -165,18 +169,89 @@ class SettingsPage extends StatelessWidget {
             child: Text('取消'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: 执行退出登录逻辑
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('退出登录功能开发中...')),
-              );
+              await _handleLogout(context);
             },
             child: Text('确定', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+  }
+  
+  /// 处理退出登录
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      // ✅ 显示加载提示
+      Get.dialog(
+        Center(
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('正在退出登录...'),
+              ],
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+      
+      // ✅ 调用服务器登出API
+      final bool logoutSuccess = await AuthService.logout();
+      
+      // ✅ 关闭加载对话框
+      Get.back();
+      
+      if (logoutSuccess) {
+        // ✅ 服务器登出成功，清除本地数据
+        final AppData appData = Get.find<AppData>();
+        appData.clearAuthState();
+        
+        // ✅ 跳转到登录页面
+        Get.offAllNamed('/login');
+        
+        Get.snackbar(
+          '成功', 
+          '已退出登录',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      } else {
+        // ✅ 服务器登出失败，但仍然清除本地数据
+        final AppData appData = Get.find<AppData>();
+        appData.clearAuthState();
+        
+        Get.offAllNamed('/login');
+        
+        Get.snackbar(
+          '警告', 
+          '服务器登出失败，但已清除本地登录状态',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      // ✅ 关闭可能存在的加载对话框
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
+      Get.snackbar(
+        '错误', 
+        '退出登录失败: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 }
 

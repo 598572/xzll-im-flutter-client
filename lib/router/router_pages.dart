@@ -13,6 +13,7 @@ import 'package:xzll_im_flutter_client/screens/splash/splash_page.dart';
 import 'package:xzll_im_flutter_client/screens/user_search_screen.dart';
 import 'package:xzll_im_flutter_client/screens/friend_request_screen.dart';
 import '../pages/profile_page_getx.dart';
+import '../pages/settings_page.dart';
 import '../controllers/profile_controller.dart';
 
 sealed class RouterPages {
@@ -34,6 +35,10 @@ sealed class RouterPages {
       binding: BindingsBuilder(() {
         Get.lazyPut(() => ProfileController());
       }),
+    ),
+    GetPage(
+      name: RouterName.settings,
+      page: () => SettingsPage(),
     ),
   ];
 }

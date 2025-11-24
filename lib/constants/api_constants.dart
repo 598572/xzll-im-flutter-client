@@ -2,6 +2,10 @@
 class ApiConstants {
   // 服务器基础地址
   static const String baseUrl = 'http://120.46.85.43:80/im-business';
+  static const String authBaseUrl = 'http://120.46.85.43:80/im-auth';
+  
+  // 认证相关API
+  static const String logout = '$authBaseUrl/oauth/logout'; // POST（用户登出）
   
   // 用户相关API（安全版本）
   static const String getUserProfile = '$baseUrl/api/user/profile/me'; // GET（获取当前用户信息）

@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../controllers/profile_controller.dart';
 import '../../models/user_info.dart';
+import '../../constant/custom_log.dart';
+import '../../router/router_name.dart';
 
 class MineView extends GetView<ProfileController> {
   const MineView({super.key});
@@ -98,35 +100,11 @@ class MineView extends GetView<ProfileController> {
                 icon: Icons.settings,
                 title: '设置',
                 iconBgColor: Color(0xFF576B95),
-                onTap: () => Get.snackbar('提示', '设置功能开发中...'),
+                onTap: () => Get.toNamed(RouterName.settings),
               ),
             ]),
             
             SizedBox(height: 30),
-            
-            // 退出登录按钮
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton(
-                onPressed: _showLogoutDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.red,
-                  elevation: 0,
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  '退出登录',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
             
             SizedBox(height: 20),
           ],
@@ -566,36 +544,6 @@ class MineView extends GetView<ProfileController> {
     );
   }
   
-  /// 显示退出登录确认对话框
-  void _showLogoutDialog() {
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('确认退出'),
-        content: Text('确定要退出登录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              Get.snackbar('提示', '退出登录功能开发中...');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
   
   /// 根据用户名生成头像背景色
   Color _getAvatarColor(String? userName) {
