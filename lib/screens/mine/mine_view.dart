@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../controllers/profile_controller.dart';
 import '../../models/user_info.dart';
+import '../../constant/custom_log.dart';
+import '../../router/router_name.dart';
 
 class MineView extends GetView<ProfileController> {
   const MineView({super.key});
@@ -18,11 +20,7 @@ class MineView extends GetView<ProfileController> {
     
     return Scaffold(
       backgroundColor: Color(0xFFEDEDED),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await controller.loadUserProfile();
-        },
-        child: Obx(() {
+      body: Obx(() {
         if (controller.isLoading.value) {
           return Center(child: CircularProgressIndicator());
         }
@@ -102,41 +100,16 @@ class MineView extends GetView<ProfileController> {
                 icon: Icons.settings,
                 title: '设置',
                 iconBgColor: Color(0xFF576B95),
-                onTap: () => Get.snackbar('提示', '设置功能开发中...'),
+                onTap: () => Get.toNamed(RouterName.settings),
               ),
             ]),
             
             SizedBox(height: 30),
             
-            // 退出登录按钮
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton(
-                onPressed: _showLogoutDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.red,
-                  elevation: 0,
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  '退出登录',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            
             SizedBox(height: 20),
           ],
         );
         }),
-      ),
     );
   }
   
@@ -207,7 +180,7 @@ class MineView extends GetView<ProfileController> {
   /// 构建微信风格的个人信息卡片
   Widget _buildWeChatProfileCard(UserInfo user) {
     return Obx(() {
-      final currentUser = controller.userInfo.value ?? user; // 使用响应式数据
+      final currentUser = controller.testUserInfo ?? controller.userInfo.value ?? user; // 优先使用testUserInfo
       return InkWell(
         onTap: () => _showProfileDetail(currentUser),
         child: Container(
@@ -266,17 +239,26 @@ class MineView extends GetView<ProfileController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  // ✅ 昵称显示逻辑：只显示userFullName，没有就显示"未设置"
-                  currentUser.userFullName?.isNotEmpty == true 
-                      ? currentUser.userFullName!
-                      : '未设置',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                Obx(() => AnimatedSwitcher(
+                  duration: Duration(milliseconds: 200),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                  child: Text(
+                    // ✅ 优先使用专用的昵称显示变量，实现无感知更新
+                    controller.displayUserFullName.value?.isNotEmpty == true
+                        ? controller.displayUserFullName.value!
+                        : (currentUser.userFullName?.isNotEmpty == true 
+                            ? currentUser.userFullName!
+                            : '未设置'),
+                    key: ValueKey(controller.displayUserFullName.value ?? currentUser.userFullName ?? '未设置'),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
+                )),
                 SizedBox(height: 6),
                 Text(
                   '账号: ${currentUser.userName ?? "未设置"}',
@@ -507,10 +489,13 @@ class MineView extends GetView<ProfileController> {
 
   /// 显示编辑昵称对话框
   void _showEditNicknameDialog(BuildContext context) {
-    final user = controller.userInfo.value;
+    // ✅ 优先使用testUserInfo，然后是userInfo.value
+    final user = controller.testUserInfo ?? controller.userInfo.value;
     if (user == null) return;
     
-    final nicknameController = TextEditingController(text: user.userFullName);
+    // ✅ 优先使用displayUserFullName，然后是user.userFullName
+    final currentNickname = controller.displayUserFullName.value ?? user.userFullName ?? '';
+    final nicknameController = TextEditingController(text: currentNickname);
     
     Get.dialog(
       AlertDialog(
@@ -520,12 +505,14 @@ class MineView extends GetView<ProfileController> {
           controller: nicknameController,
           decoration: InputDecoration(
             labelText: '昵称',
+            hintText: '请输入昵称',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
             prefixIcon: Icon(Icons.person_outline),
           ),
           maxLength: 20,
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -557,36 +544,6 @@ class MineView extends GetView<ProfileController> {
     );
   }
   
-  /// 显示退出登录确认对话框
-  void _showLogoutDialog() {
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('确认退出'),
-        content: Text('确定要退出登录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              Get.snackbar('提示', '退出登录功能开发中...');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
   
   /// 根据用户名生成头像背景色
   Color _getAvatarColor(String? userName) {

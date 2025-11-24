@@ -5,6 +5,7 @@ import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
 import 'package:xzll_im_flutter_client/services/conversation_service.dart';
 import 'package:xzll_im_flutter_client/services/websocket_service.dart';
+import 'package:xzll_im_flutter_client/services/user_info_service.dart';
 
 class ConversationLogic extends GetxController {
   final WebSocketService webSocketService = Get.find<WebSocketService>();
@@ -43,9 +44,26 @@ class ConversationLogic extends GetxController {
         
         // ✅ 智能合并：保留本地和服务器数据中时间戳更新的那个
         List<Conversation> mergedList = _mergeConversations(conversationList, serverList);
-        conversationList.assignAll(mergedList);
         
-        info('✅ 成功加载 ${conversationList.length} 个会话（服务器: ${response.data!.length}）');
+        // ✅ 补充用户信息（头像和昵称）
+        info('🔍 开始补充会话用户信息，会话数量: ${mergedList.length}');
+        
+        // 打印会话的targetUserId信息
+        for (int i = 0; i < mergedList.length; i++) {
+          final conv = mergedList[i];
+          info('会话$i - targetUserId: ${conv.targetUserId}, targetUserName: ${conv.targetUserName}, targetUserAvatar: ${conv.targetUserAvatar}');
+        }
+        
+        final enrichedConversations = await UserInfoService.enrichConversationsWithUserInfo(mergedList);
+        conversationList.assignAll(enrichedConversations);
+        
+        // 打印补充后的信息
+        for (int i = 0; i < conversationList.length; i++) {
+          final conv = conversationList[i];
+          info('补充后会话$i - targetUserId: ${conv.targetUserId}, targetUserName: ${conv.targetUserName}, targetUserAvatar: ${conv.targetUserAvatar}');
+        }
+        
+        info('✅ 成功加载 ${conversationList.length} 个会话（服务器: ${response.data!.length}，已补充用户信息）');
       } else {
         errorMessage.value = response.message ?? '加载失败';
         info('❌ 加载会话列表失败: ${errorMessage.value}');
@@ -177,13 +195,19 @@ class ConversationLogic extends GetxController {
     );
     
     if (index != -1) {
-      // ✅ 更新现有会话，累加未读数（而不是替换）
+      // ✅ 更新现有会话，累加未读数并保留已有的用户信息（避免覆盖缓存的头像和昵称）
       Conversation existingConversation = conversationList[index];
-      conversationList[index] = data.copyWith(
+      conversationList[index] = existingConversation.copyWith(
+        lastMessage: data.lastMessage,
+        timestamp: data.timestamp,
         unreadCount: existingConversation.unreadCount + data.unreadCount,
+        lastMsgFormat: data.lastMsgFormat,
+        lastMsgId: data.lastMsgId,
+        lastMsgTime: data.lastMsgTime,
+        // ✅ 不更新 targetUserName 和 targetUserAvatar，保留缓存的用户信息
       );
       conversationList.refresh();
-      info('✅ 更新会话: ${data.targetUserName ?? data.targetUserId} (chatId: ${data.chatId}), 未读数: ${existingConversation.unreadCount} + ${data.unreadCount} = ${conversationList[index].unreadCount}');
+      info('✅ 更新会话: ${existingConversation.targetUserName ?? existingConversation.targetUserId} (chatId: ${data.chatId}), 未读数: ${existingConversation.unreadCount} + ${data.unreadCount} = ${conversationList[index].unreadCount}');
     } else {
       // 添加新会话
       conversationList.add(data);

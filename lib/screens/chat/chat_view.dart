@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/screens/chat/chat_logic.dart';
 import 'package:xzll_im_flutter_client/widgets/message_bubble.dart';
+import 'package:xzll_im_flutter_client/widgets/network_status_banner.dart';
 
 class ChatView extends GetView<ChatLogic> {
   const ChatView({super.key});
@@ -11,20 +13,15 @@ class ChatView extends GetView<ChatLogic> {
     return Scaffold(
       resizeToAvoidBottomInset: true, // ✅ 确保界面适应软键盘
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.purple.withValues(alpha: 0.1),
-              backgroundImage: controller.conversation.headImage.startsWith('http')
-                  ? NetworkImage(controller.conversation.headImage)
-                  : AssetImage(controller.conversation.headImage) as ImageProvider,
-            ),
-            const SizedBox(width: 8),
-            Text(controller.conversation.name),
-          ],
-        ),
+        title: Obx(() {
+          final targetUser = controller.targetUserInfo.value;
+          final displayName = targetUser?.userFullName ?? targetUser?.userName ?? controller.conversation.name;
+          
+          return Text(
+            displayName,
+            overflow: TextOverflow.ellipsis,
+          );
+        }),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
         actions: [
@@ -38,6 +35,8 @@ class ChatView extends GetView<ChatLogic> {
       ),
       body: Column(
         children: [
+          // ✅ 网络状态横幅
+          const NetworkStatusBanner(),
           Expanded(
             child: Obx(() {
                 if (controller.messages.isEmpty) {
@@ -67,21 +66,29 @@ class ChatView extends GetView<ChatLogic> {
                   );
                 }
 
-                return ListView.builder(
-                  controller: controller.scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: controller.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = controller.messages[index];
-                    final isMe = message.fromUserId == controller.appData.user.value.id;
-                    
-                    return MessageBubble(
-                      message: message,
-                      isMe: isMe,
-                      onRetry: () => controller.retryMessage(message),
-                    );
-                  },
-                );
+                return Obx(() {
+                  final targetUser = controller.targetUserInfo.value;
+                  final myAvatarUrl = controller.appData.user.value.avatar;
+                  
+                  return ListView.builder(
+                    controller: controller.scrollController,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: controller.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = controller.messages[index];
+                      final isMe = message.fromUserId == controller.appData.user.value.id;
+                      
+                      return MessageBubble(
+                        message: message,
+                        isMe: isMe,
+                        onRetry: () => controller.retryMessage(message),
+                        myAvatarUrl: myAvatarUrl,
+                        otherAvatarUrl: targetUser?.headImage,
+                        otherDisplayName: targetUser?.userFullName ?? targetUser?.userName,
+                      );
+                    },
+                  );
+                });
               }),
           ),
           _buildInputArea(context), // 传递context用于获取底部安全区域
@@ -123,6 +130,12 @@ class ChatView extends GetView<ChatLogic> {
             Expanded(
               child: TextField(
                 controller: controller.textController,
+                onTap: () {
+                  // 输入框获得焦点时，立即滚动到合适位置
+                  scheduleMicrotask(() {
+                    controller.scrollToShowLastMessage();
+                  });
+                },
                 decoration: InputDecoration(
                   hintText: '输入消息...',
                   border: OutlineInputBorder(

@@ -22,4 +22,7 @@ sealed class RouterName {
 
   ///个人资料页面
   static const String profile = '/profile';
+
+  ///设置页面
+  static const String settings = '/settings';
 }

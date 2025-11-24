@@ -3,16 +3,24 @@ import 'package:get/get.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/screens/conversation/conversation_logic.dart';
-import 'package:xzll_im_flutter_client/screens/widgets/web_socket_status_widget.dart';
+import 'package:xzll_im_flutter_client/widgets/network_status_banner.dart';
 
 class ConversationView extends GetView<ConversationLogic> {
   const ConversationView({super.key});
+
+  /// 安全获取用户名首字符
+  String _getFirstChar(String? userName) {
+    if (userName == null || userName.isEmpty) {
+      return '?';
+    }
+    return userName.substring(0, 1).toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(mainAxisSize: MainAxisSize.min, children: [Text("消息"), WebSocketStatusWidget()]),
+        title: const Text("OkIM"),
         centerTitle: true,
         actions: [
           PullDownButton(
@@ -42,7 +50,12 @@ class ConversationView extends GetView<ConversationLogic> {
           ),
         ],
       ),
-      body: Obx(() {
+      body: Column(
+        children: [
+          // ✅ 网络状态横幅
+          const NetworkStatusBanner(),
+          Expanded(
+            child: Obx(() {
         // 加载中状态
         if (controller.isLoading.value && controller.conversationList.isEmpty) {
           return const Center(
@@ -109,7 +122,18 @@ class ConversationView extends GetView<ConversationLogic> {
                 leading: CircleAvatar(
                   radius: 24,
                   backgroundColor: Colors.purple.withOpacity(0.1),
-                  child: const Icon(Icons.person, color: Colors.purple),
+                  backgroundImage: conversation.targetUserAvatar?.isNotEmpty == true
+                      ? NetworkImage(conversation.targetUserAvatar!)
+                      : null,
+                  child: conversation.targetUserAvatar?.isEmpty != false
+                      ? Text(
+                          _getFirstChar(conversation.targetUserName),
+                          style: TextStyle(
+                            color: Colors.purple,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
                 title: Text(
                   conversation.targetUserName ?? "未知用户",
@@ -154,6 +178,9 @@ class ConversationView extends GetView<ConversationLogic> {
           ),
         );
       }),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -7,12 +7,18 @@ class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
   final VoidCallback? onRetry;
+  final String? myAvatarUrl;      // 我的头像URL
+  final String? otherAvatarUrl;   // 对方头像URL
+  final String? otherDisplayName; // 对方显示名称
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.isMe,
     this.onRetry,
+    this.myAvatarUrl,
+    this.otherAvatarUrl,
+    this.otherDisplayName,
   });
 
   @override
@@ -52,17 +58,25 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
+    final avatarUrl = isMe ? myAvatarUrl : otherAvatarUrl;
+    final displayName = isMe ? '我' : (otherDisplayName ?? '对');
+    
     return CircleAvatar(
       radius: 18,
       backgroundColor: isMe ? Colors.blue[100] : Colors.grey[300],
-      child: Text(
-        isMe ? '我' : '对',
-        style: TextStyle(
-          fontSize: 12,
-          color: isMe ? Colors.blue[700] : Colors.grey[700],
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      backgroundImage: avatarUrl?.isNotEmpty == true
+          ? NetworkImage(avatarUrl!)
+          : null,
+      child: avatarUrl?.isEmpty != false
+          ? Text(
+              displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+              style: TextStyle(
+                fontSize: 12,
+                color: isMe ? Colors.blue[700] : Colors.grey[700],
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          : null,
     );
   }
 
@@ -162,26 +176,20 @@ class MessageBubble extends StatelessWidget {
           ),
         );
       case MessageStatus.fail:
-        // 发送失败状态 - 显示中文"失败"和重试按钮
+        // 发送失败状态 - 显示红色叹号（类似微信）
         return GestureDetector(
           onTap: onRetry,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "失败",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.red[600],
-                ),
-              ),
-              const SizedBox(width: 2),
-              Icon(
-                Icons.refresh,
-                size: 12,
-                color: Colors.red[600],
-              ),
-            ],
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.priority_high,
+              size: 10,
+              color: Colors.white,
+            ),
           ),
         );
       default:

@@ -77,7 +77,13 @@ sealed class AuthTools {
       final decoded = utf8.decode(base64Url.decode(normalized));
       final json = jsonDecode(decoded);
       info('JWT Payload: $json');
-      return User(id: json['id']?.toString() ?? '', userName: json['user_name'] ?? '');
+      return User(
+        id: json['id']?.toString() ?? '', 
+        userName: json['user_name'] ?? '',
+        avatar: json['avatar']?.toString(), // 添加头像字段解析
+        phone: json['phone']?.toString(),
+        sex: json['sex'] != null ? int.tryParse(json['sex'].toString()) : null,
+      );
     } catch (e) {
       info('解析JWT失败: $e');
       return null;
