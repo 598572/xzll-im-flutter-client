@@ -176,8 +176,28 @@ class ConversationService {
     final lastMsgTime = json['lastMsgTime'];
     final unReadCount = json['unReadCount'] ?? 0;
     
-    // 从 chatId 中提取目标用户ID
-    final targetUserId = _extractTargetUserIdFromChatId(chatId, userId);
+    // ✅ 直接使用服务端返回的对方用户ID
+    String? targetUserId = json['otherUserId']?.toString();
+    info('🔍 解析otherUserId: ${json['otherUserId']} -> $targetUserId');
+    
+    // 🔄 如果没有otherUserId，尝试从fromId和toId推断
+    if (targetUserId == null || targetUserId.isEmpty) {
+      final fromId = json['fromId']?.toString();
+      final toId = json['toId']?.toString();
+      final currentUserId = userId; // 当前用户ID
+      
+      if (fromId != null && toId != null) {
+        // 对方ID是不等于当前用户ID的那个
+        targetUserId = fromId == currentUserId ? toId : fromId;
+        info('🔄 从fromId($fromId)和toId($toId)推断出targetUserId: $targetUserId');
+      } else {
+        // 🔄 最后备用方案：从chatId解析
+        targetUserId = _extractTargetUserIdFromChatId(chatId, userId);
+        if (targetUserId != null) {
+          info('🔄 从chatId($chatId)解析出targetUserId: $targetUserId');
+        }
+      }
+    }
     
     // 格式化最后消息内容（根据消息类型）
     String formattedLastMessage = _formatLastMessage(lastMessageContent, lastMsgFormat);
@@ -192,15 +212,15 @@ class ConversationService {
     info('🔔 未读数: $unReadCount');
     
     return Conversation(
-      name: targetUserId ?? '未知用户', // 暂时用ID，后续可以查询用户信息
-      headImage: 'assets/other_headImage.png', // 默认头像，后续可以查询用户信息
+      name: targetUserId ?? '未知用户', // 暂时用ID，后续通过UserInfoService补充
+      headImage: '', // 空字符串，避免NetworkImage加载本地资源错误
       lastMessage: formattedLastMessage,
       timestamp: formattedTimestamp,
       userId: userId,
       unreadCount: unReadCount as int,
       targetUserId: targetUserId,
-      targetUserName: targetUserId, // 暂时用ID
-      targetUserAvatar: null,
+      targetUserName: targetUserId, // 暂时用ID，后续通过UserInfoService补充
+      targetUserAvatar: null, // 后续通过UserInfoService补充
       lastMsgFormat: _convertToMessageType(lastMsgFormat),
       lastMsgId: lastMsgId,
       lastMsgTime: lastMsgTime,
@@ -222,7 +242,7 @@ class ConversationService {
     }
   }
 
-  /// 从chatId中提取目标用户ID
+  /// 从chatId中提取目标用户ID（备用方案，现在优先使用otherUserId）
   String? _extractTargetUserIdFromChatId(String chatId, String currentUserId) {
     if (chatId.isEmpty) return null;
     

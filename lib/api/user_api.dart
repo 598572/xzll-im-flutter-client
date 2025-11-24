@@ -7,6 +7,45 @@ import '../config/api_config.dart';
 /// 用户相关API
 class UserApi {
   
+  /// 获取我的个人信息
+  static Future<UserInfo?> getMyUserInfo() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/profile/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${ApiConfig.token}',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        // 适配API响应格式: { "code": 1, "msg": "响应成功", "data": {...} }
+        if (responseData != null && responseData['code'] == 1 && responseData['data'] != null) {
+          final data = responseData['data'];
+          log('Fetched my user info from /me endpoint: ${data['userName']}');
+          
+          // 转换为UserInfo格式
+          return UserInfo(
+            userId: data['userId']?.toString() ?? '',
+            userName: data['userName']?.toString() ?? '',
+            userFullName: data['userFullName']?.toString(),
+            headImage: data['headImage']?.toString(),
+            sex: data['sex'] != null ? int.tryParse(data['sex'].toString()) : null,
+          );
+        }
+        return null;
+      } else {
+        log('Failed to fetch my user info: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      log('Error fetching my user info: $e');
+      return null;
+    }
+  }
+  
   /// 批量查询用户信息
   static Future<List<UserInfo>> batchGetUserInfo(List<String> userIds) async {
     if (userIds.isEmpty) return [];

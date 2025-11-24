@@ -7,6 +7,7 @@ import 'package:xzll_im_flutter_client/models/domain/friend.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
 import 'package:xzll_im_flutter_client/models/request/friend_list_request.dart';
 import 'package:xzll_im_flutter_client/services/friend_service.dart';
+import 'package:xzll_im_flutter_client/services/user_info_service.dart';
 
 class ContactsLogic extends GetxController {
   final FriendService _friendService = FriendService();
@@ -53,8 +54,10 @@ class ContactsLogic extends GetxController {
       final response = await _friendService.getFriendList(request);
 
       if (response.success && response.data != null) {
-        friendList.value = response.data!;
-        info('加载好友列表成功: ${friendList.length}个好友');
+        // ✅ 补充好友的用户信息（头像和昵称）
+        final enrichedFriends = await UserInfoService.enrichFriendsWithUserInfo(response.data!);
+        friendList.value = enrichedFriends;
+        info('加载好友列表成功: ${friendList.length}个好友（已补充用户信息）');
       } else {
         errorMessage.value = response.message ?? '加载好友列表失败';
         error('加载好友列表失败: ${response.message}');

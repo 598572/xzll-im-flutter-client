@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:xzll_im_flutter_client/api/user_api.dart';
+import 'package:xzll_im_flutter_client/config/api_config.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
@@ -91,8 +93,17 @@ class LoginController extends GetxController {
             refreshToken: refreshToken,
           );
 
+          // ✅ 设置ApiConfig的token，供API调用使用
+          if (accessToken != null) {
+            ApiConfig.setCurrentUser(finalUser.id, accessToken);
+          }
+
           // 保存到本地
           await _appData.saveAuthState();
+          
+          // ✅ 登录成功后获取我的完整用户信息（包括头像）
+          await _loadMyCompleteUserInfo(finalUser.id);
+          
           return ApiResponse.success(finalUser);
         }
         return ApiResponse.error('登录响应数据为空');
@@ -104,9 +115,66 @@ class LoginController extends GetxController {
     }
   }
 
+  /// 获取我的完整用户信息（包括头像），直接调用API
+  Future<void> _loadMyCompleteUserInfo(String userId) async {
+    try {
+      info('🔍 登录时获取我的完整用户信息: $userId');
+      
+      // ✅ 直接调用个人信息接口获取最新信息
+      await _loadMyUserInfoFromAPI(userId);
+    } catch (e) {
+      error('❌ 获取我的用户信息失败: $e');
+    }
+  }
+
+  /// 从个人信息接口 /api/user/profile/me 获取我的用户信息
+  Future<void> _loadMyUserInfoFromAPI(String userId) async {
+    try {
+      info('🔍 调用/api/user/profile/me接口获取我的用户信息');
+      info('🔍 当前token: ${ApiConfig.token?.substring(0, 20)}...');
+      
+      // ✅ 调用真正的个人信息接口
+      final userInfo = await UserApi.getMyUserInfo();
+      
+      if (userInfo != null) {
+        info('✅ 从/me接口获取到我的用户信息:');
+        info('   - userId: ${userInfo.userId}');
+        info('   - userName: ${userInfo.userName}');
+        info('   - userFullName: ${userInfo.userFullName}');
+        info('   - headImage: ${userInfo.headImage}');
+        info('   - sex: ${userInfo.sex}');
+        
+        // 更新当前用户信息，包含头像
+        final updatedUser = User(
+          id: _appData.user.value.id,
+          userName: userInfo.userFullName ?? userInfo.userName,
+          avatar: userInfo.headImage, // 设置头像
+          phone: userInfo.phone, // 使用从API获取的phone信息
+          sex: userInfo.sex,
+        );
+        
+        _appData.updateUser(updatedUser);
+        await _appData.saveAuthState();
+        
+        info('✅ 已从/me接口更新我的用户信息，头像URL: ${updatedUser.avatar}');
+        info('✅ 当前AppData中的用户头像: ${_appData.user.value.avatar}');
+      } else {
+        info('⚠️ /me接口未返回我的用户信息');
+      }
+    } catch (e) {
+      error('❌ 调用/me接口失败: $e');
+    }
+  }
+
   /// 跳转到注册页面
   void navigateToRegister() {
     Get.toNamed(RouterName.register);
+  }
+
+  /// 跳转到忘记密码页面
+  void navigateToForgotPassword() {
+    // TODO: 添加忘记密码路由
+    Get.snackbar('提示', '忘记密码功能开发中...');
   }
 
   /// 显示成功消息

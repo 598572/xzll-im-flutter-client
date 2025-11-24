@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
@@ -13,7 +14,9 @@ import 'package:xzll_im_flutter_client/screens/conversation/conversation_logic.d
 import 'package:xzll_im_flutter_client/services/websocket_service.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
 import 'package:xzll_im_flutter_client/services/chat_history_service.dart';
+import 'package:xzll_im_flutter_client/services/user_info_service.dart';
 import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
+import 'package:xzll_im_flutter_client/models/user_info.dart';
 
 class ChatLogic extends GetxController {
   /// 当前会话
@@ -44,15 +47,26 @@ class ChatLogic extends GetxController {
   /// 发送中状态
   final RxBool isSending = false.obs;
   
+  /// 对方用户信息（用于显示头像和昵称）
+  final Rx<UserInfo?> targetUserInfo = Rx<UserInfo?>(null);
+  
   /// 事件流订阅
   StreamSubscription? _messageStatusSubscription;
   StreamSubscription? _newMessageSubscription;
+  
+  /// 键盘观察者
+  _KeyboardObserver? _keyboardObserver;
 
   @override
   void onInit() {
     super.onInit();
     // 从路由参数中获取会话对象
     conversation = Get.arguments as Conversation;
+    
+    // ✅ 监听软键盘变化，自动滚动到底部
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupKeyboardListener();
+    });
     
     // ✅ 设置当前打开的会话ID（用于上下文感知的ACK）
     final currentUserId = _appData.user.value.id;
@@ -62,13 +76,15 @@ class ChatLogic extends GetxController {
       AppEvent.currentOpenChatId.add(chatId);
       info("🔓 设置当前打开会话: $chatId");
       
-      // ✅ 清零该会话的未读数
-      try {
-        final conversationLogic = Get.find<ConversationLogic>();
-        conversationLogic.clearUnreadCount(chatId);
-      } catch (e) {
-        info("⚠️ 无法清零未读数，ConversationLogic未找到: $e");
-      }
+      // ✅ 清零该会话的未读数（延迟到下一个事件循环，避免在build期间修改状态）
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          final conversationLogic = Get.find<ConversationLogic>();
+          conversationLogic.clearUnreadCount(chatId);
+        } catch (e) {
+          info("⚠️ 无法清零未读数，ConversationLogic未找到: $e");
+        }
+      });
     }
     
     // ✅ 优化：不在聊天界面重复初始化WebSocket
@@ -78,6 +94,9 @@ class ChatLogic extends GetxController {
     
     // 加载历史消息
     _loadHistoryMessages();
+    
+    // ✅ 获取对方用户信息（用于显示头像和昵称）
+    _loadTargetUserInfo();
   }
 
   /// 确保WebSocket已连接（不重复初始化）
@@ -447,6 +466,72 @@ class ChatLogic extends GetxController {
     }
   }
 
+  /// 设置软键盘监听器，当软键盘弹出时智能滚动
+  void _setupKeyboardListener() {
+    // 创建并添加键盘观察者
+    _keyboardObserver = _KeyboardObserver(
+      onKeyboardShow: () {
+        // 软键盘弹出时，使用微任务立即响应，避免帧延迟
+        scheduleMicrotask(() {
+          scrollToShowLastMessage();
+        });
+      },
+    );
+    WidgetsBinding.instance.addObserver(_keyboardObserver!);
+  }
+
+  /// 智能滚动，确保最后一条消息可见但不会过度滚动
+  void scrollToShowLastMessage() {
+    if (scrollController.hasClients && messages.isNotEmpty) {
+      // 计算合适的滚动位置，不要滚动到最底部，而是确保最后一条消息可见
+      final maxScroll = scrollController.position.maxScrollExtent;
+      final currentScroll = scrollController.offset;
+      
+      // 如果当前已经接近底部，则适度滚动
+      if (maxScroll - currentScroll < 200) {
+        // ✅ 使用更高性能的滚动方式
+        final targetPosition = maxScroll * 0.85;
+        
+        // 如果距离很近，直接跳转，避免动画卡顿
+        if ((targetPosition - currentScroll).abs() < 100) {
+          scrollController.jumpTo(targetPosition);
+        } else {
+          // 距离较远时使用快速动画
+          scrollController.animateTo(
+            targetPosition,
+            duration: Duration(milliseconds: 120), // 进一步减少动画时间
+            curve: Curves.easeOutQuart, // 使用更快的缓动曲线
+          );
+        }
+      }
+    }
+  }
+
+  /// 获取对方用户信息（用于显示头像和昵称）
+  Future<void> _loadTargetUserInfo() async {
+    final targetUserId = conversation.targetUserId;
+    if (targetUserId == null || targetUserId.isEmpty) {
+      info('⚠️ 无法获取对方用户信息，targetUserId为空');
+      return;
+    }
+
+    try {
+      info('🔍 获取对方用户信息: $targetUserId');
+      
+      // ✅ 使用缓存优先的策略获取用户信息
+      final userInfoMap = await UserInfoService.batchGetUserInfo([targetUserId]);
+      
+      if (userInfoMap.containsKey(targetUserId)) {
+        targetUserInfo.value = userInfoMap[targetUserId];
+        info('✅ 成功获取对方用户信息: ${targetUserInfo.value?.userName}');
+      } else {
+        info('⚠️ 未找到对方用户信息: $targetUserId');
+      }
+    } catch (e) {
+      error('❌ 获取对方用户信息失败: $e');
+    }
+  }
+
   @override
   void onClose() {
     // ✅ 清空当前打开的会话ID
@@ -456,10 +541,48 @@ class ChatLogic extends GetxController {
     textController.dispose();
     scrollController.dispose();
     
+    // 清理键盘观察者
+    if (_keyboardObserver != null) {
+      WidgetsBinding.instance.removeObserver(_keyboardObserver!);
+    }
+    
     // 清理事件订阅
     _messageStatusSubscription?.cancel();
     _newMessageSubscription?.cancel();
     
     super.onClose();
+  }
+}
+
+/// 软键盘观察者，用于监听软键盘状态变化
+class _KeyboardObserver extends WidgetsBindingObserver {
+  final VoidCallback onKeyboardShow;
+  double _lastBottomInset = 0;
+  bool _isProcessing = false; // 防止重复处理
+
+  _KeyboardObserver({required this.onKeyboardShow});
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    
+    // 防止重复处理
+    if (_isProcessing) return;
+    
+    // 获取软键盘高度
+    final bottomInset = WidgetsBinding.instance.window.viewInsets.bottom;
+    
+    // 只在软键盘从隐藏变为显示时触发回调，避免重复触发
+    if (bottomInset > 0 && _lastBottomInset == 0) {
+      _isProcessing = true;
+      onKeyboardShow();
+      
+      // 短暂延迟后重置处理标志
+      Timer(Duration(milliseconds: 50), () {
+        _isProcessing = false;
+      });
+    }
+    
+    _lastBottomInset = bottomInset;
   }
 }
