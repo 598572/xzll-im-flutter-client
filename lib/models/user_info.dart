@@ -54,8 +54,12 @@ class UserInfo {
       'userId': userId,
       'userName': userName,
       'userFullName': userFullName,
+      'phone': phone,
+      'email': email,
       'headImage': headImage,
       'sex': sex,
+      'registerTime': registerTime,
+      'lastLoginTime': lastLoginTime,
     };
   }
   

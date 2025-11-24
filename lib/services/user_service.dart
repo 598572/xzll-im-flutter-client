@@ -81,17 +81,20 @@ class UserService {
           final data = jsonDecode(responseBody);
           info('📥 解析响应JSON: $data');
           
-          // ✅ 兼容不同的响应格式
-          String? avatarUrl;
-          if (data['success'] == true || data['code'] == 1) {
-            avatarUrl = data['avatarUrl'] ?? data['data']?['avatarUrl'] ?? data['url'];
-          }
-          
-          if (avatarUrl != null && avatarUrl.isNotEmpty) {
-            info('✅ 头像上传成功: $avatarUrl');
-            return avatarUrl;
+          // ✅ 头像上传API响应格式 {"code": 1, "msg": "头像上传成功", "data": {"url": "..."}}
+          if (data['code'] == 1 && data['data'] != null) {
+            final responseData = data['data'] as Map<String, dynamic>;
+            final String? avatarUrl = responseData['url'];
+            
+            if (avatarUrl != null && avatarUrl.isNotEmpty) {
+              info('✅ 头像上传成功: $avatarUrl');
+              return avatarUrl;
+            } else {
+              error('❌ 响应数据中没有找到头像URL: $responseData');
+              return null;
+            }
           } else {
-            error('❌ 响应中没有找到头像URL: $data');
+            error('❌ 服务器返回错误: ${data['msg'] ?? '未知错误'}');
             return null;
           }
         } catch (e) {

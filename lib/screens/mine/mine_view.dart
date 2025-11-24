@@ -18,11 +18,7 @@ class MineView extends GetView<ProfileController> {
     
     return Scaffold(
       backgroundColor: Color(0xFFEDEDED),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await controller.loadUserProfile();
-        },
-        child: Obx(() {
+      body: Obx(() {
         if (controller.isLoading.value) {
           return Center(child: CircularProgressIndicator());
         }
@@ -136,7 +132,6 @@ class MineView extends GetView<ProfileController> {
           ],
         );
         }),
-      ),
     );
   }
   
@@ -207,7 +202,7 @@ class MineView extends GetView<ProfileController> {
   /// 构建微信风格的个人信息卡片
   Widget _buildWeChatProfileCard(UserInfo user) {
     return Obx(() {
-      final currentUser = controller.userInfo.value ?? user; // 使用响应式数据
+      final currentUser = controller.testUserInfo ?? controller.userInfo.value ?? user; // 优先使用testUserInfo
       return InkWell(
         onTap: () => _showProfileDetail(currentUser),
         child: Container(
@@ -266,17 +261,26 @@ class MineView extends GetView<ProfileController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  // ✅ 昵称显示逻辑：只显示userFullName，没有就显示"未设置"
-                  currentUser.userFullName?.isNotEmpty == true 
-                      ? currentUser.userFullName!
-                      : '未设置',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                Obx(() => AnimatedSwitcher(
+                  duration: Duration(milliseconds: 200),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                  child: Text(
+                    // ✅ 优先使用专用的昵称显示变量，实现无感知更新
+                    controller.displayUserFullName.value?.isNotEmpty == true
+                        ? controller.displayUserFullName.value!
+                        : (currentUser.userFullName?.isNotEmpty == true 
+                            ? currentUser.userFullName!
+                            : '未设置'),
+                    key: ValueKey(controller.displayUserFullName.value ?? currentUser.userFullName ?? '未设置'),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
+                )),
                 SizedBox(height: 6),
                 Text(
                   '账号: ${currentUser.userName ?? "未设置"}',
@@ -507,10 +511,13 @@ class MineView extends GetView<ProfileController> {
 
   /// 显示编辑昵称对话框
   void _showEditNicknameDialog(BuildContext context) {
-    final user = controller.userInfo.value;
+    // ✅ 优先使用testUserInfo，然后是userInfo.value
+    final user = controller.testUserInfo ?? controller.userInfo.value;
     if (user == null) return;
     
-    final nicknameController = TextEditingController(text: user.userFullName);
+    // ✅ 优先使用displayUserFullName，然后是user.userFullName
+    final currentNickname = controller.displayUserFullName.value ?? user.userFullName ?? '';
+    final nicknameController = TextEditingController(text: currentNickname);
     
     Get.dialog(
       AlertDialog(
@@ -520,12 +527,14 @@ class MineView extends GetView<ProfileController> {
           controller: nicknameController,
           decoration: InputDecoration(
             labelText: '昵称',
+            hintText: '请输入昵称',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
             prefixIcon: Icon(Icons.person_outline),
           ),
           maxLength: 20,
+          autofocus: true,
         ),
         actions: [
           TextButton(
