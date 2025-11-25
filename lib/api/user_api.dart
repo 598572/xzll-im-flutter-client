@@ -133,6 +133,48 @@ class UserApi {
     }
   }
   
+  /// 根据会话ID查询聊天记录（用于同步服务器消息）
+  static Future<List<Map<String, dynamic>>> getChatMessages({
+    required String chatId,
+    required String userId,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/chat/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${ApiConfig.token}',
+        },
+        body: jsonEncode({
+          'chatId': chatId,
+          'userId': userId,
+          'pageSize': pageSize,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        // 适配API响应格式: { "code": 1, "msg": "响应成功", "data": { "messages": [...] } }
+        if (responseData != null && responseData['code'] == 1 && responseData['data'] != null) {
+          final data = responseData['data'];
+          final messages = data['messages'] as List<dynamic>? ?? [];
+          
+          log('Fetched ${messages.length} messages from server for chatId: $chatId');
+          return messages.cast<Map<String, dynamic>>();
+        }
+        return [];
+      } else {
+        log('Failed to fetch chat messages: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      log('Error fetching chat messages: $e');
+      return [];
+    }
+  }
+
   /// 获取会话列表
   static Future<List<ChatItem>> getChatList({
     int currentPage = 1,
@@ -170,6 +212,50 @@ class UserApi {
       }
     } catch (e) {
       log('Error fetching chat list: $e');
+      return [];
+    }
+  }
+
+  /// 根据chatId获取C2C聊天历史记录（用于卸载重装后恢复聊天记录）
+  /// 
+  /// [chatId] 会话ID，格式：100-1-123729160192-124948567040
+  /// 
+  /// 返回消息列表，如果失败返回空列表
+  static Future<List<Map<String, dynamic>>> getC2CChatHistory({
+    required String chatId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/chat/c2c/history'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${ApiConfig.token}',
+        },
+        body: jsonEncode({
+          'chatId': chatId,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        // 适配API响应格式: { "code": 1, "msg": "响应成功", "data": { "messages": [...] } }
+        if (responseData != null && responseData['code'] == 1 && responseData['data'] != null) {
+          final data = responseData['data'];
+          final messages = data['messages'] as List<dynamic>? ?? [];
+          
+          log('Fetched ${messages.length} C2C chat history messages from server for chatId: $chatId');
+          return messages.cast<Map<String, dynamic>>();
+        } else {
+          log('Failed to fetch C2C chat history: ${responseData['msg'] ?? 'Unknown error'}');
+          return [];
+        }
+      } else {
+        log('Failed to fetch C2C chat history: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      log('Error fetching C2C chat history: $e');
       return [];
     }
   }

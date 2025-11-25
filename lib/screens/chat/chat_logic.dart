@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
+import 'package:xzll_im_flutter_client/api/user_api.dart';
 import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/constant/custom_log.dart';
@@ -94,6 +95,9 @@ class ChatLogic extends GetxController {
     
     // 加载历史消息
     _loadHistoryMessages();
+    
+    // ✅ 检查是否需要从服务器同步消息
+    _checkAndSyncMessages();
     
     // ✅ 获取对方用户信息（用于显示头像和昵称）
     _loadTargetUserInfo();
@@ -310,8 +314,8 @@ class ChatLogic extends GetxController {
         _markHistoryMessagesAsRead();
       } else {
         info('💭 本地没有历史消息，尝试从服务端获取...');
-        // 2. 如果本地没有消息，从服务端获取
-        await _loadHistoryFromServer();
+        // 2. 如果本地没有消息，优先使用新的C2C历史接口获取
+        await _loadC2CChatHistoryFromServer();
       }
     } catch (e) {
       error('❌ 加载历史消息失败: $e');
@@ -366,7 +370,99 @@ class ChatLogic extends GetxController {
     info('🔍 =====================================');
   }
 
-  /// 从服务端加载历史消息
+  /// 从服务端加载C2C聊天历史记录（新接口，用于卸载重装后恢复聊天记录）
+  Future<void> _loadC2CChatHistoryFromServer() async {
+    try {
+      final currentUserId = _appData.user.value.id;
+      final targetUserId = conversation.targetUserId!;
+      
+      // 获取聊天ID（优先使用从服务端返回的chatId）
+      final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
+      
+      info('🌐 从服务端获取C2C聊天历史记录，chatId: $chatId');
+      
+      // 调用新的C2C历史接口
+      final serverMessagesData = await UserApi.getC2CChatHistory(chatId: chatId);
+      
+      if (serverMessagesData.isNotEmpty) {
+        info('✅ 从服务端获取 ${serverMessagesData.length} 条C2C聊天历史记录');
+        
+        // 将服务器消息数据转换为ChatMessage对象
+        final chatMessages = <ChatMessage>[];
+        for (final msgData in serverMessagesData) {
+          final chatMessage = _convertC2CHistoryMessageToChatMessage(msgData, chatId);
+          if (chatMessage != null) {
+            chatMessages.add(chatMessage);
+          }
+        }
+        
+        // 按时间排序（最新的在后面）
+        chatMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        
+        if (chatMessages.isNotEmpty) {
+          // 保存到本地数据库
+          await _databaseService.insertMessages(chatMessages);
+          
+          // 设置消息列表
+          messages.assignAll(chatMessages);
+          _scrollToBottom();
+          
+          // ✅ 标记从服务端加载的历史消息中的未读消息为已读
+          _markHistoryMessagesAsRead();
+          
+          info('✅ 成功加载并保存 ${chatMessages.length} 条C2C聊天历史记录');
+        } else {
+          info('💭 转换后的消息列表为空');
+        }
+      } else {
+        info('💭 服务端没有返回C2C聊天历史记录，尝试使用旧接口...');
+        // 如果新接口没有数据，尝试使用旧接口
+        await _loadHistoryFromServer();
+      }
+    } catch (e) {
+      error('❌ 从服务端加载C2C聊天历史记录异常: $e');
+      // 如果新接口失败，尝试使用旧接口
+      try {
+        await _loadHistoryFromServer();
+      } catch (e2) {
+        error('❌ 使用旧接口加载历史消息也失败: $e2');
+      }
+    }
+  }
+
+  /// 将C2C历史接口返回的消息数据转换为ChatMessage对象
+  ChatMessage? _convertC2CHistoryMessageToChatMessage(Map<String, dynamic> msgData, String chatId) {
+    try {
+      final msgId = msgData['msgId']?.toString() ?? '';
+      final msgContent = msgData['msgContent']?.toString() ?? '';
+      final fromUserId = msgData['fromUserId']?.toString() ?? '';
+      final toUserId = msgData['toUserId']?.toString() ?? '';
+      final msgFormat = msgData['msgFormat'] as int? ?? 1;
+      final msgCreateTime = msgData['msgCreateTime'] as int? ?? 0;
+      final msgStatus = msgData['msgStatus'] as int? ?? 4; // 默认已读
+      final withdrawFlag = msgData['withdrawFlag'] as int? ?? 0;
+      
+      return ChatMessage(
+        clientMsgId: msgId, // 历史消息没有clientMsgId，使用msgId作为clientMsgId
+        msgId: msgId,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        content: msgContent,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(msgCreateTime),
+        type: msgFormat,
+        status: _convertMsgStatusToMessageStatus(msgStatus),
+        chatId: chatId,
+        withdrawStatus: withdrawFlag == 1 
+            ? MessageWithdrawStatus.yes 
+            : MessageWithdrawStatus.no,
+      );
+    } catch (e) {
+      error('❌ 转换C2C历史消息失败: $e, 消息数据: $msgData');
+      return null;
+    }
+  }
+
+  /// 从服务端加载历史消息（旧接口，作为备用）
   Future<void> _loadHistoryFromServer({String? lastMsgId}) async {
     try {
       final currentUserId = _appData.user.value.id;
@@ -529,6 +625,126 @@ class ChatLogic extends GetxController {
       }
     } catch (e) {
       error('❌ 获取对方用户信息失败: $e');
+    }
+  }
+
+  /// 检查本地消息记录，如果为空则从服务器同步
+  Future<void> _checkAndSyncMessages() async {
+    try {
+      // 如果本地已有消息记录，则不需要同步
+      if (messages.isNotEmpty) {
+        info('ℹ️ 本地已有 ${messages.length} 条消息，无需同步');
+        return;
+      }
+      
+      info('🔍 本地无消息记录，开始从服务器同步');
+      await syncMessagesFromServer();
+    } catch (e) {
+      error('❌ 检查和同步消息失败: $e');
+    }
+  }
+
+  /// 从服务器同步聊天记录（当本地没有消息记录时）
+  Future<void> syncMessagesFromServer() async {
+    try {
+      info('🔄 开始同步服务器消息，chatId: ${conversation.chatId}');
+      
+      // 调用API获取服务器消息
+      final serverMessages = await UserApi.getChatMessages(
+        chatId: conversation.chatId ?? '',
+        userId: appData.user.value.id,
+        pageSize: 50, // 获取最近50条消息
+      );
+      
+      if (serverMessages.isNotEmpty) {
+        info('✅ 从服务器获取到 ${serverMessages.length} 条消息');
+        
+        // 将服务器消息转换为ChatMessage对象
+        final chatMessages = <ChatMessage>[];
+        for (final msgData in serverMessages) {
+          final chatMessage = _convertServerMessageToChatMessage(msgData);
+          if (chatMessage != null) {
+            chatMessages.add(chatMessage);
+          }
+        }
+        
+        // 按时间排序（最新的在后面）
+        chatMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        
+        // 更新消息列表
+        messages.assignAll(chatMessages);
+        
+        // 保存到本地数据库
+        await _saveMessagesToLocal(chatMessages);
+        
+        info('✅ 成功同步 ${chatMessages.length} 条消息到本地');
+      } else {
+        info('ℹ️ 服务器没有返回消息记录');
+      }
+    } catch (e) {
+      error('❌ 同步服务器消息失败: $e');
+    }
+  }
+
+  /// 将服务器消息数据转换为ChatMessage对象
+  ChatMessage? _convertServerMessageToChatMessage(Map<String, dynamic> msgData) {
+    try {
+      final msgId = msgData['msgId']?.toString() ?? '';
+      return ChatMessage(
+        clientMsgId: msgId, // 使用服务器msgId作为clientMsgId
+        msgId: msgId,
+        fromUserId: msgData['fromUserId']?.toString() ?? '',
+        toUserId: msgData['toUserId']?.toString() ?? '',
+        content: msgData['msgContent']?.toString() ?? '',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(msgData['msgCreateTime'] as int? ?? 0),
+        type: msgData['msgFormat'] as int? ?? 1,
+        status: _convertMsgStatusToMessageStatus(msgData['msgStatus'] as int? ?? 1),
+        chatId: msgData['chatId']?.toString() ?? '',
+      );
+    } catch (e) {
+      error('❌ 转换服务器消息失败: $e, 消息数据: $msgData');
+      return null;
+    }
+  }
+
+  /// 将服务器的msgFormat转换为MessageType
+  MessageType _convertMsgFormatToMessageType(int msgFormat) {
+    switch (msgFormat) {
+      case 1: // TEXT_MSG
+        return MessageType.text;
+      case 2: // VOICE_MSG
+        return MessageType.voice;
+      case 3: // LOCATION_MSG
+        return MessageType.location;
+      default:
+        return MessageType.text;
+    }
+  }
+
+  /// 将服务器的msgStatus转换为MessageStatus
+  MessageStatus _convertMsgStatusToMessageStatus(int msgStatus) {
+    switch (msgStatus) {
+      case 1:
+        return MessageStatus.serverReceived;
+      case 2:
+        return MessageStatus.offLine;
+      case 3:
+        return MessageStatus.unRead;
+      case 4:
+        return MessageStatus.readed;
+      default:
+        return MessageStatus.serverReceived;
+    }
+  }
+
+  /// 保存消息到本地数据库
+  Future<void> _saveMessagesToLocal(List<ChatMessage> messages) async {
+    try {
+      // TODO: 实现保存到本地数据库的逻辑
+      // 这里可以调用ChatService或数据库服务来保存消息
+      info('💾 保存 ${messages.length} 条消息到本地数据库');
+    } catch (e) {
+      error('❌ 保存消息到本地失败: $e');
     }
   }
 
