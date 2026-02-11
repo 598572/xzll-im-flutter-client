@@ -11,6 +11,7 @@ import 'package:xzll_im_flutter_client/models/request/login_request.dart';
 import 'package:xzll_im_flutter_client/repository/auth_repository.dart';
 import 'package:xzll_im_flutter_client/repository/impl/auth_repository_impl.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
+import 'package:xzll_im_flutter_client/services/imsdk_manager.dart';
 import 'package:xzll_im_flutter_client/utils/auth_tools.dart';
 
 class LoginController extends GetxController {
@@ -100,10 +101,13 @@ class LoginController extends GetxController {
 
           // 保存到本地
           await _appData.saveAuthState();
-          
+
           // ✅ 登录成功后获取我的完整用户信息（包括头像）
           await _loadMyCompleteUserInfo(finalUser.id);
-          
+
+          // ✅ 连接IM服务器
+          await _connectIMServer();
+
           return ApiResponse.success(finalUser);
         }
         return ApiResponse.error('登录响应数据为空');
@@ -175,6 +179,21 @@ class LoginController extends GetxController {
   void navigateToForgotPassword() {
     // TODO: 添加忘记密码路由
     Get.snackbar('提示', '忘记密码功能开发中...');
+  }
+
+  /// 连接IM服务器
+  Future<void> _connectIMServer() async {
+    try {
+      if (Get.isRegistered<IMSDKManager>() && IMSDKManager.to.isInitialized) {
+        info('🔗 登录成功，正在连接IM服务器...');
+        await IMSDKManager.to.connect();
+        info('✅ IM服务器连接请求已发送');
+      } else {
+        waring('⚠️ IMSDKManager未初始化，跳过IM连接');
+      }
+    } catch (e) {
+      error('❌ IM服务器连接失败: $e');
+    }
   }
 
   /// 显示成功消息

@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # XZLL IM SDK (本地路径)
+  xzll_im_sdk:
+    path: /Users/hzz/myself_project/开源im-sdk/xzll-im-sdk
   web_socket_channel: ^3.0.3
   image_picker: ^1.2.0
   # 添加权限处理

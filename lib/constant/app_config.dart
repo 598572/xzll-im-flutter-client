@@ -29,8 +29,11 @@ sealed class AppConfig {
   static String get handleFriendRequestUrl => '$baseUrl/xzll/im/friend/request/handle';
   
   /// 会话相关API
-  static String get conversationListUrl => '$baseUrl/xzll/im/conversation/list';
+  static String get conversationListUrl => '$baseUrl/im-business/api/chat/lastChatList';
   static String get conversationDeleteUrl => '$baseUrl/xzll/im/conversation/delete';
+
+  /// 聊天历史API
+  static String get chatHistoryUrl => '$baseUrl/im-business/api/chat/c2c/history';
   
   /// WebSocket连接URL
   static String getWebSocketUrl(String userId) => _serverConfig.getWebSocketUrl(userId);

@@ -4,11 +4,10 @@ import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/conversation.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
 import 'package:xzll_im_flutter_client/services/conversation_service.dart';
-import 'package:xzll_im_flutter_client/services/websocket_service.dart';
 import 'package:xzll_im_flutter_client/services/user_info_service.dart';
 
 class ConversationLogic extends GetxController {
-  final WebSocketService webSocketService = Get.find<WebSocketService>();
+  // WebSocket已由SDK管理，这里不再需要直接引用
   final ConversationService _conversationService = ConversationService();
 
   ///会话列表

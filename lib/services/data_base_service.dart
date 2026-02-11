@@ -15,7 +15,7 @@ class DataBaseService extends GetxService {
     try {
       String databasesPath = await getDatabasesPath();
       String path = join(databasesPath, 'xzll_$userId.db');
-      _database = await openDatabase(path, version: 5, onCreate: _onCreate, onUpgrade: _onUpgrade);
+      _database = await openDatabase(path, version: 6, onCreate: _onCreate, onUpgrade: _onUpgrade);
       info("初始化数据库成功");
     } catch (e) {
       error("初始化本地数据库失败：${e.toString()}");
@@ -75,8 +75,8 @@ class DataBaseService extends GetxService {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        clientMsgId TEXT,
-        msgId TEXT UNIQUE NOT NULL,
+        clientMsgId TEXT UNIQUE NOT NULL,
+        msgId TEXT,
         content TEXT NOT NULL,
         fromUserId TEXT NOT NULL,
         toUserId TEXT NOT NULL,
@@ -102,25 +102,30 @@ class DataBaseService extends GetxService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     debug("数据库升级：从版本 $oldVersion 到 $newVersion");
-    
+
     if (oldVersion < 2) {
       // 版本1到版本2：更新消息表结构
       await _upgradeToV2(db);
     }
-    
+
     if (oldVersion < 3) {
       // 版本2到版本3：更新会话表结构
       await _upgradeToV3(db);
     }
-    
+
     if (oldVersion < 4) {
       // 版本3到版本4：添加双轨制ID支持
       await _upgradeToV4(db);
     }
-    
+
     if (oldVersion < 5) {
       // 版本4到版本5：添加用户信息表
       await _upgradeToV5(db);
+    }
+
+    if (oldVersion < 6) {
+      // 版本5到版本6：修复消息表UNIQUE约束问题
+      await _upgradeToV6(db);
     }
   }
   
@@ -630,7 +635,7 @@ class DataBaseService extends GetxService {
   Future<void> _upgradeToV5(Database db) async {
     try {
       info("升级数据库到版本5：添加用户信息表");
-      
+
       // 创建用户信息表
       await db.execute('''
         CREATE TABLE IF NOT EXISTS user_info (
@@ -647,10 +652,83 @@ class DataBaseService extends GetxService {
           updated_at INTEGER DEFAULT (strftime('%s', 'now'))
         )
       ''');
-      
+
       info("✅ 用户信息表创建成功");
     } catch (e) {
       error("❌ 升级到版本5失败: $e");
+    }
+  }
+
+  /// 升级到版本6：修复消息表UNIQUE约束问题
+  /// 将UNIQUE约束从msgId改到clientMsgId，解决发送消息时msgId为空导致覆盖的问题
+  Future<void> _upgradeToV6(Database db) async {
+    try {
+      info("升级数据库到版本6：修复消息表UNIQUE约束");
+
+      // 1. 创建新的消息表（使用clientMsgId作为UNIQUE约束）
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS messages_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          clientMsgId TEXT UNIQUE NOT NULL,
+          msgId TEXT,
+          content TEXT NOT NULL,
+          fromUserId TEXT NOT NULL,
+          toUserId TEXT NOT NULL,
+          type INTEGER NOT NULL,
+          status INTEGER DEFAULT 1,
+          timestamp TEXT NOT NULL,
+          withdrawStatus INTEGER DEFAULT 0,
+          chatId TEXT NOT NULL,
+          created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+      ''');
+
+      // 2. 迁移数据从旧表到新表
+      final List<Map<String, dynamic>> oldMessages = await db.query('messages');
+
+      info("📦 找到 ${oldMessages.length} 条消息需要迁移");
+
+      if (oldMessages.isNotEmpty) {
+        Batch batch = db.batch();
+
+        for (var msg in oldMessages) {
+          // 如果clientMsgId为空，生成一个临时的
+          final clientMsgId = msg['clientMsgId']?.toString() ?? 'temp-${DateTime.now().millisecondsSinceEpoch}-${msg["id"]}';
+
+          batch.insert('messages_new', {
+            'clientMsgId': clientMsgId,
+            'msgId': msg['msgId']?.toString(),
+            'content': msg['content']?.toString() ?? '',
+            'fromUserId': msg['fromUserId']?.toString() ?? '',
+            'toUserId': msg['toUserId']?.toString() ?? '',
+            'type': msg['type'] ?? 1,
+            'status': msg['status'] ?? 1,
+            'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+            'withdrawStatus': msg['withdrawStatus'] ?? 0,
+            'chatId': msg['chatId']?.toString() ?? '',
+            'created_at': msg['created_at']?.toString(),
+          });
+        }
+
+        await batch.commit(noResult: true);
+        info("✅ 成功迁移 ${oldMessages.length} 条消息");
+      }
+
+      // 3. 删除旧表
+      await db.execute('DROP TABLE IF EXISTS messages');
+
+      // 4. 重命名新表
+      await db.execute('ALTER TABLE messages_new RENAME TO messages');
+
+      // 5. 重新创建索引
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_fromUserId ON messages(fromUserId)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_toUserId ON messages(toUserId)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_clientMsgId ON messages(clientMsgId)');
+
+      info("✅ 数据库升级到版本6完成");
+    } catch (e) {
+      error("❌ 升级到版本6失败: $e");
     }
   }
 

@@ -10,7 +10,7 @@ import java.net.URISyntaxException;
 public class ProtobufClient_2 {
 
 
-    private static final String huawei = "120.46.85.43";
+    private static final String huawei = "43.97.209.60";
     private static final String XUNIJI = "172.30.128.65";
     private static final String XUNIJI_家 = "192.168.1.103";
     public static final String LOCAL = "127.0.0.1";
