@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:xzll_im_flutter_client/constant/app_data.dart';
 import 'package:xzll_im_flutter_client/constant/app_event.dart';
 import 'package:xzll_im_flutter_client/constant/app_theme.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
 import 'package:xzll_im_flutter_client/router/router_pages.dart';
-import 'package:xzll_im_flutter_client/services/websocket_service.dart';
+import 'package:xzll_im_flutter_client/services/imsdk_manager.dart';
 
 import 'constant/custom_log.dart';
 import 'models/enum/web_socket_status.dart';
 
 // 应用程序入口
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
+  // 初始化服务
+  await initServices();
+
   runApp(const XzllImClient());
+}
+
+/// 初始化服务
+Future<void> initServices() async {
+  info('🔧 初始化服务...');
+
+  // 注册AppData
+  Get.put(AppData());
+  info('✅ AppData 已注册');
+
+  // 注册IMSDKManager
+  final imSdkManager = Get.put(IMSDKManager());
+  await imSdkManager.init();
+  info('✅ IMSDKManager 已注册');
+
+  info('🎉 所有服务初始化完成');
 }
 
 class XzllImClient extends StatefulWidget {
@@ -74,14 +94,13 @@ class _XzllImClientState extends State<XzllImClient> with WidgetsBindingObserver
 
   /// 应用回到前台时的处理
   void _onAppResumed() {
-    // 应用回到前台，可以在这里检查WebSocket连接状态
-    // 如果连接断开，可以尝试重连
+    // 应用回到前台，检查SDK连接状态
     info("🔄 应用回到前台，检查连接状态");
 
     try {
-      // ✅ 通知WebSocket服务应用回到前台，恢复心跳检查
-      if (Get.isRegistered<WebSocketService>()) {
-        Get.find<WebSocketService>().setAppInBackground(false);
+      // ✅ 通知SDK应用回到前台
+      if (Get.isRegistered<IMSDKManager>()) {
+        Get.find<IMSDKManager>().setAppInBackground(false);
       }
 
       // 检查WebSocket连接状态
@@ -90,12 +109,12 @@ class _XzllImClientState extends State<XzllImClient> with WidgetsBindingObserver
 
       // 如果连接断开，尝试重连
       if (wsStatus != WebSocketStatus.connected) {
-        info("   ⚠️ WebSocket未连接，尝试初始化连接");
-        if (Get.isRegistered<WebSocketService>()) {
-          Get.find<WebSocketService>().initWebSocket();
+        info("   ⚠️ WebSocket未连接，尝试重连");
+        if (Get.isRegistered<IMSDKManager>() && IMSDKManager.to.isInitialized) {
+          IMSDKManager.to.connect();
         }
       } else {
-        info("   ✅ WebSocket已连接，心跳已恢复");
+        info("   ✅ WebSocket已连接");
       }
     } catch (e) {
       error("❌ 检查WebSocket状态失败: $e");
@@ -104,26 +123,21 @@ class _XzllImClientState extends State<XzllImClient> with WidgetsBindingObserver
 
   /// 应用进入后台时的处理
   void _onAppPaused() {
-    // ✅ 关键：应用进入后台时，不断开WebSocket连接
-    // 因为：
-    // 1. 进程还在运行，只是不在前台
-    // 2. 需要接收消息推送
-    // 3. 保持在线状态
-    info("💡 应用进入后台，保持WebSocket连接以接收消息推送");
+    // 应用进入后台，保持SDK连接以接收消息推送
+    info("💡 应用进入后台，保持SDK连接以接收消息推送");
 
-    // ✅ 暂停心跳检查（因为后台Timer会被挂起），但保持连接
     try {
-      if (Get.isRegistered<WebSocketService>()) {
-        Get.find<WebSocketService>().setAppInBackground(true);
+      if (Get.isRegistered<IMSDKManager>()) {
+        Get.find<IMSDKManager>().setAppInBackground(true);
       }
     } catch (e) {
-      error("❌ 通知WebSocket服务失败: $e");
+      error("❌ 通知SDK服务失败: $e");
     }
 
-    // 打印当前WebSocket状态以供调试
+    // 打印当前WebSocket状态
     final wsStatus = AppEvent.webSocketStatus.value;
     info("   当前WebSocket状态: ${wsStatus.name}");
-    info("   ✅ 连接将保持活跃（心跳已暂停）");
+    info("   ✅ 连接将保持活跃");
   }
 
   /// 应用即将终止时的处理

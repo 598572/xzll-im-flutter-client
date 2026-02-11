@@ -13,6 +13,15 @@ class DioClient {
         baseUrl: AppConfig.baseUrl,
         connectTimeout: Duration(seconds: AppConfig.connectionTimeout),
         receiveTimeout: Duration(seconds: AppConfig.receiveTimeout),
+        // ✅ 添加默认请求头，使用真实的浏览器User-Agent避免被WAF拦截
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Cache-Control': 'no-cache',
+        },
       ),
     );
 

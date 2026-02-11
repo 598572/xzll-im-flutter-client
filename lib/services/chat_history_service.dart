@@ -7,7 +7,7 @@ import 'package:xzll_im_flutter_client/constant/custom_log.dart';
 import 'package:xzll_im_flutter_client/models/domain/api_response.dart';
 import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
-import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
+import 'package:xzll_im_sdk/xzll_im_sdk.dart';
 
 /// 聊天历史消息请求模型
 class ChatHistoryRequest {
@@ -17,6 +17,7 @@ class ChatHistoryRequest {
   final int pageSize;
   final int? startTime; // 开始时间戳（可选）
   final int? endTime;   // 结束时间戳（可选）
+  final bool reverse;   // 是否倒序查询（默认true，最新消息在前）
 
   ChatHistoryRequest({
     required this.chatId,
@@ -25,6 +26,7 @@ class ChatHistoryRequest {
     this.pageSize = 50,
     this.startTime,
     this.endTime,
+    this.reverse = true,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +37,7 @@ class ChatHistoryRequest {
       'pageSize': pageSize,
       'startTime': startTime,
       'endTime': endTime,
+      'reverse': reverse,
     };
   }
 }
@@ -66,17 +69,17 @@ class ChatHistoryResponse {
     return ChatMessage(
       clientMsgId: '', // ✅ 历史消息没有clientMsgId（服务端不存储），设置为空
       msgId: json['msgId']?.toString() ?? '',
-      content: json['content'] ?? '',
+      content: json['msgContent'] ?? '',
       fromUserId: json['fromUserId']?.toString() ?? '',
       toUserId: json['toUserId']?.toString() ?? '',
-      type: json['type'] ?? 1,
+      type: json['msgFormat'] ?? 1,
       status: MessageStatus.readed, // 历史消息默认都是已读状态
       timestamp: DateTime.fromMillisecondsSinceEpoch(
-        json['timestamp'] ?? DateTime.now().millisecondsSinceEpoch,
+        json['msgCreateTime'] ?? DateTime.now().millisecondsSinceEpoch,
       ),
       chatId: json['chatId']?.toString() ?? '', // 提供默认空字符串
       withdrawStatus: MessageWithdrawStatus.values.firstWhere(
-        (status) => status.code == (json['withdrawStatus'] ?? 0),
+        (status) => status.code == (json['withdrawFlag'] ?? 0),
         orElse: () => MessageWithdrawStatus.no,
       ),
     );
@@ -90,7 +93,7 @@ class ChatHistoryService {
   ChatHistoryService._internal();
 
   // API路径
-  static const String _historyPath = '/im-business/api/chat/history';
+  static const String _historyPath = '/im-business/api/chat/c2c/history';
   
   AppData get _appData => Get.find<AppData>();
 

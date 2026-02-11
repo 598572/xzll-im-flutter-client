@@ -7,7 +7,7 @@ import 'package:xzll_im_flutter_client/repository/impl/auth_repository_impl.dart
 import 'package:xzll_im_flutter_client/router/router_name.dart';
 import 'package:xzll_im_flutter_client/services/connectivity_services.dart';
 import 'package:xzll_im_flutter_client/services/data_base_service.dart';
-import 'package:xzll_im_flutter_client/services/websocket_service.dart';
+import 'package:xzll_im_flutter_client/services/imsdk_manager.dart';
 import 'package:xzll_im_flutter_client/utils/auth_tools.dart';
 
 class SplashLogic extends GetxController {
@@ -25,10 +25,13 @@ class SplashLogic extends GetxController {
   /// 初始化服务
   Future<void> initServices() async {
     await Get.putAsync(() async => await SharedPreferences.getInstance());
-    Get.put(AppData());
+
+    // AppData 和 IMSDKManager 已在 main.dart 中注册，这里不再重复注册
+    // 只注册其他服务
     Get.put(ConnectivityServices());
+    // ✅ 注册DataBaseService用于用户信息存储（与SDK的消息数据库分离）
+    // SDK处理IM消息存储，DataBaseService处理用户个人信息存储
     Get.lazyPut(() => DataBaseService());
-    Get.lazyPut(() => WebSocketService());
   }
 
   Future<void> initRepository() async {
@@ -41,7 +44,7 @@ class SplashLogic extends GetxController {
     final cacheAuthData = await AuthTools.loadAuthState();
     if (cacheAuthData.accessToken != null && cacheAuthData.refreshToken != null) {
       info('📋 检查本地缓存的认证信息');
-      
+
       var validateToken = await repo.validateToken(cacheAuthData.accessToken!);
       if (validateToken.success) {
         info('✅ token仍然有效，直接使用并刷新');
@@ -51,7 +54,10 @@ class SplashLogic extends GetxController {
           refreshToken: cacheAuthData.refreshToken,
           user: AuthTools.parseUserFromToken(cacheAuthData.accessToken ?? ""),
         );
-        
+
+        // 连接IM服务器
+        await _connectIMServer();
+
         // 可选：异步刷新token获取新的，但不影响当前登录状态
         _tryRefreshTokenInBackground(repo, cacheAuthData.refreshToken!);
         Get.offAllNamed(RouterName.home);
@@ -66,6 +72,10 @@ class SplashLogic extends GetxController {
             refreshToken: refreshResponse.data?.refreshToken,
             user: AuthTools.parseUserFromToken(refreshResponse.data?.token ?? ""),
           );
+
+          // 连接IM服务器
+          await _connectIMServer();
+
           Get.offAllNamed(RouterName.home);
         } else {
           error("❌ refreshToken也已过期，需要重新登录");
@@ -77,6 +87,20 @@ class SplashLogic extends GetxController {
       error('❌ 没有认证缓存，跳转到登录界面');
       await AuthTools.clearAuthState();
       Get.offAllNamed(RouterName.login);
+    }
+  }
+
+  /// 连接IM服务器
+  Future<void> _connectIMServer() async {
+    try {
+      if (IMSDKManager.to.isInitialized) {
+        info('🔗 正在连接IM服务器...');
+        await IMSDKManager.to.connect();
+      } else {
+        waring('⚠️ IMSDKManager未初始化，跳过IM连接');
+      }
+    } catch (e) {
+      error('❌ IM服务器连接失败: $e');
     }
   }
   

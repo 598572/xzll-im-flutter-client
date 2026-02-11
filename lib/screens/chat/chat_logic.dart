@@ -12,27 +12,26 @@ import 'package:xzll_im_flutter_client/models/domain/message_status_changed_mode
 import 'package:xzll_im_flutter_client/models/enum/message_enum.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 import 'package:xzll_im_flutter_client/screens/conversation/conversation_logic.dart';
-import 'package:xzll_im_flutter_client/services/websocket_service.dart';
-import 'package:xzll_im_flutter_client/services/data_base_service.dart';
+import 'package:xzll_im_flutter_client/services/imsdk_manager.dart';
 import 'package:xzll_im_flutter_client/services/chat_history_service.dart';
 import 'package:xzll_im_flutter_client/services/user_info_service.dart';
-import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
 import 'package:xzll_im_flutter_client/models/user_info.dart';
+import 'package:xzll_im_sdk/xzll_im_sdk.dart';
 
 class ChatLogic extends GetxController {
   /// 当前会话
   late Conversation conversation;
-  
-  /// WebSocket服务
-  final WebSocketService _webSocketService = Get.find<WebSocketService>();
+
+  /// IM SDK管理器
+  final IMSDKManager _imSdkManager = Get.find<IMSDKManager>();
   final AppData _appData = Get.find<AppData>();
-  
-  /// 数据库服务
-  final DataBaseService _databaseService = Get.find<DataBaseService>();
-  
+
   /// 历史消息服务
   final ChatHistoryService _historyService = ChatHistoryService();
-  
+
+  /// ✅ 会话管理器（自动处理会话状态）
+  ChatSessionManager? _sessionManager;
+
   /// 暴露appData供视图使用
   AppData get appData => _appData;
   
@@ -76,7 +75,10 @@ class ChatLogic extends GetxController {
       final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
       AppEvent.currentOpenChatId.add(chatId);
       info("🔓 设置当前打开会话: $chatId");
-      
+
+      // ✅ 使用SDK的会话管理器（自动处理会话状态）
+      _sessionManager = _imSdkManager.openChatSession(chatId);
+
       // ✅ 清零该会话的未读数（延迟到下一个事件循环，避免在build期间修改状态）
       WidgetsBinding.instance.addPostFrameCallback((_) {
         try {
@@ -113,7 +115,7 @@ class ChatLogic extends GetxController {
     // ✅ 只检查连接状态，不重复初始化
     if (AppEvent.webSocketStatus.value != WebSocketStatus.connected) {
       info("⚠️ WebSocket未连接，尝试初始化...");
-    await _webSocketService.initWebSocket();
+      await _imSdkManager.connect();
     } else {
       info("✅ WebSocket已连接，可以正常使用");
     }
@@ -135,37 +137,19 @@ class ChatLogic extends GetxController {
       if (index != -1) {
         final oldStatus = messages[index].status;
         final oldMessage = messages[index];
-        
+
         // 更新消息状态，如果有serverMsgId则同时更新
         ChatMessage updatedMessage = oldMessage.copyWith(
           status: statusModel.messageStatus,
           msgId: statusModel.serverMsgId?.isNotEmpty == true ? statusModel.serverMsgId : oldMessage.msgId,
         );
-        
+
         messages[index] = updatedMessage;
         info("✅ 状态更新成功: 位置[$index] ${oldStatus.desc} -> ${statusModel.messageStatus.desc}");
         info("   clientMsgId: ${updatedMessage.clientMsgId}");
         info("   msgId: ${updatedMessage.msgId}");
-        
-        // ✅ 同步更新数据库中的消息状态（双轨制：优先使用clientMsgId）
-        try {
-          await _databaseService.updateMessageStatus(
-            updatedMessage.clientMsgId, 
-            statusModel.messageStatus,
-            serverMsgId: statusModel.serverMsgId
-          );
-          info("💾 消息状态已同步到数据库: ${statusModel.messageStatus.desc}");
-        } catch (e) {
-          error("❌ 同步消息状态到数据库失败: $e");
-        }
-        
-        // 如果是首次收到服务端确认且有完整消息数据，则保存完整消息记录
-        if (statusModel.messageStatus == MessageStatus.serverReceived && 
-            updatedMessage.msgId.isNotEmpty && 
-            updatedMessage.clientMsgId.isNotEmpty) {
-          info("💾 消息已被服务器确认，保存完整消息记录到数据库");
-          _saveMessageToDatabase(updatedMessage);
-        }
+
+        // ✅ SDK自动处理数据库状态更新，无需手动操作
       } else {
         waring("⚠️ 未找到要更新状态的消息: ${statusModel.messageId}");
         info("📱 当前消息列表:");
@@ -178,16 +162,27 @@ class ChatLogic extends GetxController {
     // 监听接收到的新消息
     _newMessageSubscription = AppEvent.onMessageReceived.stream.listen((ChatMessage message) {
       info("📨 收到新消息: ${message.content} from: ${message.fromUserId}");
-      
+
       // 只显示与当前会话相关的消息
-      if (message.fromUserId == conversation.targetUserId || 
+      if (message.fromUserId == conversation.targetUserId ||
           message.toUserId == conversation.targetUserId) {
+
+        // ✅ 去重检查：避免重复添加同一消息
+        bool isDuplicate = messages.any((m) =>
+          (m.clientMsgId.isNotEmpty && m.clientMsgId == message.clientMsgId) ||
+          (m.msgId.isNotEmpty && m.msgId == message.msgId)
+        );
+
+        if (isDuplicate) {
+          waring("⚠️ 重复消息，已忽略 - clientMsgId: ${message.clientMsgId}, msgId: ${message.msgId}");
+          return;
+        }
+
         messages.add(message);
         _scrollToBottom();
-        
-        // 保存接收到的消息到本地数据库
-        _saveMessageToDatabase(message);
-        
+
+        // ✅ SDK自动处理消息保存，无需手动操作
+
         // ✅ 由于采用了"上下文感知ACK"，WebSocketService 已根据会话打开状态自动发送了正确的ACK
         // 会话打开时→直接发送已读ACK（status=4）
         // 会话未打开时→发送未读ACK（status=3）
@@ -211,9 +206,9 @@ class ChatLogic extends GetxController {
       final targetUserId = conversation.targetUserId!;
       final chatId = conversation.chatId ?? ChatIdUtils.generateC2CChatId(currentUserId, targetUserId);
 
-      // 创建消息对象（双轨制：WebSocketService会生成clientMsgId，服务端会分配真实的msgId）
+      // 创建消息对象（使用SDK发送消息）
       final message = ChatMessage(
-        clientMsgId: '', // 空值，WebSocketService会生成UUID作为clientMsgId
+        clientMsgId: '', // SDK会生成UUID作为clientMsgId
         msgId: '', // 空值，服务端会分配真实的msgId（雪花算法）
         content: content,
         fromUserId: currentUserId,
@@ -224,11 +219,11 @@ class ChatLogic extends GetxController {
         chatId: chatId,
       );
 
-      // ✅ 发送到服务器并获取更新后的消息对象（包含clientMsgId）
-      ChatMessage? sentMessage = await _webSocketService.sendMessage(message);
+      // ✅ 通过SDK发送到服务器并获取更新后的消息对象（包含clientMsgId）
+      ChatMessage? sentMessage = await _imSdkManager.sendMessage(message);
 
       if (sentMessage == null) {
-        error("❌ 发送消息失败 - WebSocketService.sendMessage 返回 null");
+        error("❌ 发送消息失败 - IMSDKManager.sendMessage 返回 null");
         // 添加失败状态的消息到本地列表
         final failedMessage = message.copyWith(status: MessageStatus.fail);
         messages.add(failedMessage);
@@ -237,15 +232,14 @@ class ChatLogic extends GetxController {
       } else {
         info("✅ 消息已发送到服务端，等待服务端分配真实ID并确认");
         info("📋 返回的消息: clientMsgId=${sentMessage.clientMsgId}, msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
-        
-        // ✅ 添加发送中状态的消息到本地列表（使用WebSocketService返回的完整消息对象）
+
+        // ✅ 添加发送中状态的消息到本地列表（使用SDK返回的完整消息对象）
         messages.add(sentMessage);
         info("➕ 添加发送中消息到界面: clientMsgId=${sentMessage.clientMsgId}, msgId=${sentMessage.msgId}, status=${sentMessage.status.desc}");
-        
-        // 暂时不保存到数据库，等收到服务端确认和真实ID后再保存
-        // _saveMessageToDatabase(sentMessage);
+
+        // ✅ SDK自动处理消息保存，无需手动操作
       }
-      
+
       _scrollToBottom();
     } catch (e) {
       error("❌ 发送消息异常: $e");
@@ -285,32 +279,31 @@ class ChatLogic extends GetxController {
   Future<void> _loadHistoryMessages() async {
     try {
       info('📚 开始加载历史消息...');
-      
+
       final currentUserId = _appData.user.value.id;
       final targetUserId = conversation.targetUserId;
-      
+
       if (targetUserId == null || targetUserId.isEmpty) {
         error('❌ 目标用户ID为空，无法加载历史消息');
         return;
       }
-      
+
       // 打印调试信息
       _debugChatInfo();
-      
-      // 1. 首先从本地数据库加载历史消息
-      final localMessages = await _databaseService.getMessagesBetweenUsers(
-        currentUserId,
+
+      // 1. 首先从SDK数据库加载历史消息
+      final localMessages = await _imSdkManager.getMessages(
         targetUserId,
         limit: 50,
       );
-      
+
       if (localMessages.isNotEmpty) {
         info('✅ 从本地加载 ${localMessages.length} 条历史消息');
-        // 将历史消息添加到消息列表（注意：数据库返回的是倒序，需要反转）
-        messages.assignAll(localMessages.reversed.toList());
+        // 将历史消息添加到消息列表
+        messages.assignAll(localMessages);
         _scrollToBottom();
-        
-        // ✅ 标记加载的历史消息中的未读消息为已读
+
+        // ✅ 恢复：对历史未读消息发送已读ACK（上下文感知ACK只对新消息生效）
         _markHistoryMessagesAsRead();
       } else {
         info('💭 本地没有历史消息，尝试从服务端获取...');
@@ -325,20 +318,20 @@ class ChatLogic extends GetxController {
   /// 标记历史消息中的未读消息为已读
   void _markHistoryMessagesAsRead() {
     final currentUserId = _appData.user.value.id;
-    
+
     info('👁️ 检查历史消息中的未读消息...');
     int unreadCount = 0;
-    
+
     for (var message in messages) {
       // 只处理接收到的未读消息（不是自己发的）
-      if (message.toUserId == currentUserId && 
+      if (message.toUserId == currentUserId &&
           message.fromUserId != currentUserId &&
           message.status == MessageStatus.unRead) {
-        
+
         unreadCount++;
         info('👁️ 发送已读确认 - clientMsgId: ${message.clientMsgId}, msgId: ${message.msgId}');
-        
-        _webSocketService.sendReadAck(
+
+        _imSdkManager.sendReadAck(
           message.clientMsgId,
           message.msgId,
           message.fromUserId,
@@ -346,7 +339,7 @@ class ChatLogic extends GetxController {
         );
       }
     }
-    
+
     if (unreadCount > 0) {
       info('✅ 已为 $unreadCount 条历史消息发送已读确认');
     } else {
@@ -363,10 +356,10 @@ class ChatLogic extends GetxController {
     info('🔗 会话chatId: ${conversation.chatId}');
     info('📊 WebSocket状态: ${AppEvent.webSocketStatus.value}');
     info('📱 当前消息数量: ${messages.length}');
-    
-    // 检查WebSocket连接状态
-    _webSocketService.checkConnectionStatus();
-    
+
+    // 检查IM SDK连接状态
+    info('🔗 IM SDK连接状态: ${_imSdkManager.isInitialized ? "已初始化" : "未初始化"}');
+
     info('🔍 =====================================');
   }
 
@@ -400,17 +393,16 @@ class ChatLogic extends GetxController {
         chatMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         
         if (chatMessages.isNotEmpty) {
-          // 保存到本地数据库
-          await _databaseService.insertMessages(chatMessages);
-          
+          // ✅ SDK自动处理消息保存，无需手动操作
+
           // 设置消息列表
           messages.assignAll(chatMessages);
           _scrollToBottom();
-          
-          // ✅ 标记从服务端加载的历史消息中的未读消息为已读
+
+          // ✅ 恢复：对历史未读消息发送已读ACK（上下文感知ACK只对新消息生效）
           _markHistoryMessagesAsRead();
-          
-          info('✅ 成功加载并保存 ${chatMessages.length} 条C2C聊天历史记录');
+
+          info('✅ 成功加载 ${chatMessages.length} 条C2C聊天历史记录');
         } else {
           info('💭 转换后的消息列表为空');
         }
@@ -485,16 +477,15 @@ class ChatLogic extends GetxController {
         
         if (serverMessages.isNotEmpty) {
           info('✅ 从服务端获取 ${serverMessages.length} 条历史消息');
-          
-          // 保存到本地数据库
-          await _databaseService.insertMessages(serverMessages);
-          
+
+          // ✅ SDK自动处理消息保存，无需手动操作
+
           if (lastMsgId == null) {
             // 首次加载，直接设置消息列表
             messages.assignAll(serverMessages);
             _scrollToBottom();
-            
-            // ✅ 标记从服务端加载的历史消息中的未读消息为已读
+
+            // ✅ 恢复：对历史未读消息发送已读ACK（上下文感知ACK只对新消息生效）
             _markHistoryMessagesAsRead();
           } else {
             // 加载更多消息，插入到列表开头
@@ -520,27 +511,6 @@ class ChatLogic extends GetxController {
     info('🔄 加载更多历史消息，最早消息ID: $oldestMsgId');
     
     await _loadHistoryFromServer(lastMsgId: oldestMsgId);
-  }
-
-  /// 保存消息到本地数据库
-  Future<void> _saveMessageToDatabase(ChatMessage message) async {
-    try {
-      await _databaseService.insertMessage(message);
-      
-      // 同时更新会话信息
-      final updatedConversation = conversation.copyWith(
-        lastMessage: message.content,
-        lastMsgId: message.msgId,
-        lastMsgTime: message.timestamp.millisecondsSinceEpoch,
-        timestamp: _formatMessageTime(message.timestamp),
-      );
-      
-      await _databaseService.insertOrUpdateConversation(updatedConversation);
-      
-      info('💾 消息已保存到本地数据库: ${message.msgId}');
-    } catch (e) {
-      error('❌ 保存消息到数据库失败: $e');
-    }
   }
 
   /// 格式化消息时间为会话显示格式
@@ -670,13 +640,12 @@ class ChatLogic extends GetxController {
         
         // 按时间排序（最新的在后面）
         chatMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-        
+
         // 更新消息列表
         messages.assignAll(chatMessages);
-        
-        // 保存到本地数据库
-        await _saveMessagesToLocal(chatMessages);
-        
+
+        // ✅ SDK自动处理消息保存，无需手动操作
+
         info('✅ 成功同步 ${chatMessages.length} 条消息到本地');
       } else {
         info('ℹ️ 服务器没有返回消息记录');
@@ -737,35 +706,28 @@ class ChatLogic extends GetxController {
     }
   }
 
-  /// 保存消息到本地数据库
-  Future<void> _saveMessagesToLocal(List<ChatMessage> messages) async {
-    try {
-      // TODO: 实现保存到本地数据库的逻辑
-      // 这里可以调用ChatService或数据库服务来保存消息
-      info('💾 保存 ${messages.length} 条消息到本地数据库');
-    } catch (e) {
-      error('❌ 保存消息到本地失败: $e');
-    }
-  }
-
   @override
   void onClose() {
-    // ✅ 清空当前打开的会话ID
+    // ✅ 清空当前打开的会话ID（Flutter层）
     AppEvent.currentOpenChatId.add('');
-    info("🔒 清空当前打开会话");
-    
+    info("🔒 清空当前打开会话（Flutter层）");
+
+    // ✅ 关闭会话管理器（自动清空SDK会话ID）
+    _sessionManager?.close();
+    _sessionManager = null;
+
     textController.dispose();
     scrollController.dispose();
-    
+
     // 清理键盘观察者
     if (_keyboardObserver != null) {
       WidgetsBinding.instance.removeObserver(_keyboardObserver!);
     }
-    
+
     // 清理事件订阅
     _messageStatusSubscription?.cancel();
     _newMessageSubscription?.cancel();
-    
+
     super.onClose();
   }
 }

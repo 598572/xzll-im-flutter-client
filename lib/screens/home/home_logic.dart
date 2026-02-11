@@ -7,13 +7,11 @@ import 'package:xzll_im_flutter_client/constant/constant.dart';
 import 'package:xzll_im_flutter_client/models/domain/friend_request_push_message.dart';
 import 'package:xzll_im_flutter_client/models/enum/web_socket_status.dart';
 import 'package:xzll_im_flutter_client/router/router_name.dart';
-import 'package:xzll_im_flutter_client/services/data_base_service.dart';
-import 'package:xzll_im_flutter_client/services/websocket_service.dart';
+import 'package:xzll_im_flutter_client/services/imsdk_manager.dart';
 
 class HomeLogic extends GetxService {
   final AppData appData = Get.find<AppData>();
-  final WebSocketService webSocketService = Get.find<WebSocketService>();
-  final DataBaseService dataBaseService = Get.find<DataBaseService>();
+  final IMSDKManager imSdkManager = Get.find<IMSDKManager>();
 
   final RxInt currentIndex = 0.obs;
   
@@ -36,8 +34,7 @@ class HomeLogic extends GetxService {
   void _webSocketStatusChanged(WebSocketStatus status) async {
     info("WebSocketStatus: ${status.name}");
     if (status == WebSocketStatus.connected) {
-      // ✅ 批量获取消息ID的逻辑已移除（双轨制：消息ID由服务端实时生成）
-      webSocketService.requestConversations();
+      info('✅ WebSocket已连接，会话列表会自动更新');
     }
   }
 
@@ -50,9 +47,11 @@ class HomeLogic extends GetxService {
   }
 
   Future<void> init() async {
-    await dataBaseService.initDatabase(userId: appData.currentUserId);
-    // 初始化服务
-    await webSocketService.initWebSocket();
+    // ✅ SDK自动处理数据库初始化，无需手动操作
+    // WebSocket已在SDK中自动管理，无需手动初始化
+    if (!imSdkManager.isInitialized) {
+      await imSdkManager.init();
+    }
   }
 
   /// 设置好友申请推送监听

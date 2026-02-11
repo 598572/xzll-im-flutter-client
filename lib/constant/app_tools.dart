@@ -1,5 +1,5 @@
 import 'package:xzll_im_flutter_client/models/domain/chat_message.dart';
-import 'package:xzll_im_flutter_client/utils/chat_id_utils.dart';
+import 'package:xzll_im_sdk/xzll_im_sdk.dart';
 
 String formatLastMessage(ChatMessage message) {
   // 消息格式（1:文本,2:图片,3:语音,4:视频,5:文件,6:位置）
